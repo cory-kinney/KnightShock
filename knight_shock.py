@@ -5,54 +5,16 @@ import numpy as np
 units = UnitRegistry()
 
 
-class Mixture:
-    def __init__(self, mole_fractions):
-        """ Initializes a mixture using a dict of species (key) and mole fractions/ratios (value) """
-        self._mole_fractions = None
-        self.mole_fractions = mole_fractions
-
-    def __str__(self):
-        return "".join("{}:{}, ".format(key, value) for key, value in self.mole_fractions.items())[:-2]
-
-    @property
-    def mole_fractions(self):
-        return self._mole_fractions
-
-    @mole_fractions.setter
-    def mole_fractions(self, value):
-        """ Normalizes and sets the mole fractions for the mixture """
-        total = sum(value.values())
-        self._mole_fractions = {species: mole_fraction / total for species, mole_fraction in value}
-
-    def get_fill_pressures(self, P):
-        return {species: x * P for species, x in self._mole_fractions}
-
-
-class Conditions:
-    def __init__(self):
-        self._T = None
-        self._P = None
-
-    @property
-    def T(self):
-        return self._T
-
-    @T.setter
-    @units.check('[temperature]')
-    def T(self, value):
-        self._T = value.to(units.K)
-
-    @property
-    def P(self):
-        return self._P
-
-    @P.setter
-    @units.check('[pressure]')
-    def P(self, value):
-        self._P = value
-
-
 class Experiment:
+    """
+    Regions:
+        1 - initial conditions driven section
+        2 - post-incident-shock conditions driven section
+        3 - expanded conditions driver section
+        4 - initial conditions driver section
+        5 - post-reflected-shock driven section
+    """
+
     def __init__(self):
         self.mechanism = None
 
@@ -98,7 +60,7 @@ class Experiment:
         self._shock_velocity_model = (model[0] / units.s, model[1] * units.m / units.s)
         self._shock_velocity_r2 = 1 - residual / (velocity.size * velocity.var())
 
-        solution = ct.solution(self.mechanism)
+        solution = ct.Solution(self.mechanism)
         solution.TPX = self.region1.T.magnitude, self.region1.P.to(units.Pa).magnitude, str(self.driven_mixture)
 
         gamma = solution.cp_mass / solution.cv_mass
@@ -107,4 +69,7 @@ class Experiment:
 
         self._M = self._shock_velocity_model[1] / a
         self._attenuation = self._shock_velocity_model[0] / self._shock_velocity_model[1]
+
+
+
 
