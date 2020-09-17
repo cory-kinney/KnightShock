@@ -20,11 +20,10 @@ def FROSH(T1, P1, u1, *, thermo, max_iterations=1000, convergence_criteria=1e-6)
         P2: pressure in the post-incident-shock region [Pa]
         T5: temperature in the post-reflected-shock region [K]
         P5: pressure in the post-reflected-shock region [Pa]
-
     """
 
     # Get relevant properties for mixture at T1 and P1
-    thermo.TPX = T1, P1
+    thermo.TP = T1, P1
 
     gamma1 = thermo.cp_mass / thermo.cv_mass
     a1 = (ct.gas_constant / thermo.mean_molecular_weight * gamma1 * T1) ** 0.5  # [m/s]
@@ -150,13 +149,14 @@ class Experiment:
         self.driver_mixture = None
         self.driven_mixture = None
 
-        self.timer_counter_values = []  # [us]
-        self.timer_counter_positions = []  # [m] from end wall
+        self.timer_counter_values = np.empty(0)  # [us]
+        self.timer_counter_positions = np.empty(0)  # [m] from end wall
 
         self._x = None
         self._v = None
 
         self.u1 = None  # [m/s]
+        self.a1 = None  # [m/s]
         self.M1 = None
         self.attenuation = None  # [s^-1]
         self.r2 = None
@@ -166,15 +166,7 @@ class Experiment:
         self.T5 = None  # [K]
         self.P5 = None  # [Pa]
 
-    @property
-    def timer_counter_positions(self):
-        return self.timer_counter_positions
-
-    @timer_counter_positions.setter
-    def timer_counter_positions(self, x):
-        self.timer_counter_positions = - np.abs(x)  # Sets positive x toward the end wall
-
-    def postprocess(self, mechanism):
+    def postprocess(self, source):
         n = len(self.timer_counter_values)
 
         self._x = np.empty(n - 1)
@@ -183,21 +175,20 @@ class Experiment:
         for i in range(n - 1):
             self._x[i] = (self.timer_counter_positions[i] + self.timer_counter_positions[i + 1]) / 2
             self._v[i] = (self.timer_counter_positions[i + 1] - self.timer_counter_positions[i]) \
-                         / (self.timer_counter_values[i + 1] - self.timer_counter_values[i])
+                         / (self.timer_counter_values[i])
 
         A = np.vstack([self._x, np.ones(len(self._x))]).T
-        model, residual = np.linalg.lstsq(A, self._v)[:2]
+        model, residual = np.linalg.lstsq(A, self._v, rcond=None)[:2]
         self.r2 = 1 - residual / (self._v.size * self._v.var())
 
-        thermo = ct.Solution(mechanism)
+        thermo = ct.Solution(source=source)
         thermo.TPX = self.T1, self.P1, self.driven_mixture
 
         gamma = thermo.cp_mass / thermo.cv_mass
-        a = np.sqrt(ct.gas_constant / thermo.mean_molecular_weight * gamma * self.T1)
+        self.a1 = np.sqrt(ct.gas_constant / thermo.mean_molecular_weight * gamma * self.T1)
 
         self.u1 = model[1]
-        self.M1 = model[1] / a
+        self.M1 = model[1] / self.a1
         self.attenuation = model[0] / model[1]
 
         self.T2, self.P2, self.T5, self.P5 = FROSH(self.T1, self.P1, self.u1, thermo=thermo)
-
