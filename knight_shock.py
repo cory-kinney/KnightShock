@@ -149,46 +149,33 @@ class Experiment:
         self.driver_mixture = None
         self.driven_mixture = None
 
-        self.timer_counter_values = np.empty(0)  # [us]
-        self.timer_counter_positions = np.empty(0)  # [m] from end wall
-
-        self._x = None
-        self._v = None
-
-        self.u1 = None  # [m/s]
-        self.a1 = None  # [m/s]
-        self.M1 = None
-        self.attenuation = None  # [s^-1]
-        self.r2 = None
-
         self.T2 = None  # [K]
         self.P2 = None  # [Pa]
         self.T5 = None  # [K]
         self.P5 = None  # [Pa]
 
-    def postprocess(self, source):
-        n = len(self.timer_counter_values)
+    @staticmethod
+    def get_shock_speed(x, t):
+        n = len(x)
 
-        self._x = np.empty(n - 1)
-        self._v = np.empty(len(self._x))
+        if len(t) == n:
+            t = np.diff(t)
+
+        if len(t) != n - 1:
+            raise ValueError
+
+        x_midpoint = np.empty(n - 1)
+        u_avg = np.empty(n - 1)
 
         for i in range(n - 1):
-            self._x[i] = (self.timer_counter_positions[i] + self.timer_counter_positions[i + 1]) / 2
-            self._v[i] = (self.timer_counter_positions[i + 1] - self.timer_counter_positions[i]) \
-                         / (self.timer_counter_values[i])
+            x_midpoint[i] = (x[i] + x[i + 1]) / 2
+            u_avg[i] = (x[i + 1] - x[i]) / t[i]
 
-        A = np.vstack([self._x, np.ones(len(self._x))]).T
-        model, residual = np.linalg.lstsq(A, self._v, rcond=None)[:2]
-        self.r2 = 1 - residual / (self._v.size * self._v.var())
+        A = np.vstack([x_midpoint, np.ones(n - 1)]).T
+        model, residual = np.linalg.lstsq(A, u_avg, rcond=None)[:2]
+        r2 = 1 - residual / (u_avg.size * u_avg.var())
 
-        thermo = ct.Solution(source=source)
-        thermo.TPX = self.T1, self.P1, self.driven_mixture
+        u = model[1]
+        attenuation = model[0] / model[1]
 
-        gamma = thermo.cp_mass / thermo.cv_mass
-        self.a1 = np.sqrt(ct.gas_constant / thermo.mean_molecular_weight * gamma * self.T1)
-
-        self.u1 = model[1]
-        self.M1 = model[1] / self.a1
-        self.attenuation = model[0] / model[1]
-
-        self.T2, self.P2, self.T5, self.P5 = FROSH(self.T1, self.P1, self.u1, thermo=thermo)
+        return u, attenuation, r2
