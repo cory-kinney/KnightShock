@@ -140,7 +140,7 @@ class Experiment:
         5 - post-reflected-shock driven section
     """
 
-    def __init__(self):
+    def __init__(self, mechanism):
         self.T1 = None  # [K]
         self.T4 = None  # [K]
         self.P1 = None  # [Pa]
@@ -153,6 +153,8 @@ class Experiment:
         self.P2 = None  # [Pa]
         self.T5 = None  # [K]
         self.P5 = None  # [Pa]
+
+        self.thermo = ct.Solution(mechanism)
 
     @staticmethod
     def get_shock_speed(x, t):
@@ -179,3 +181,5 @@ class Experiment:
         attenuation = model[0] / model[1]
 
         return u, attenuation, r2
+
+
