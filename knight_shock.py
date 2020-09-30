@@ -1,6 +1,8 @@
 import cantera as ct
 import numpy as np
 
+R = ct.gas_constant
+
 
 def FROSH(T1, P1, u1, *, thermo, max_iterations=1000, convergence_criteria=1e-6):
     """
@@ -149,12 +151,46 @@ class Experiment:
         self.driver_mixture = None
         self.driven_mixture = None
 
+        self._u = None  # [m/s]
+
         self.T2 = None  # [K]
         self.P2 = None  # [Pa]
         self.T5 = None  # [K]
         self.P5 = None  # [Pa]
 
         self.thermo = ct.Solution(mechanism)
+
+    @property
+    def gamma1(self):
+        self.thermo.TPX = self.T1, self.P1, self.driven_mixture
+        return self.thermo.cp / self.thermo.cv
+
+    @property
+    def gamma4(self):
+        self.thermo.TPX = self.T4, self.P4, self.driver_mixture
+        return self.thermo.cp / self.thermo.cv
+
+    @property
+    def a1(self):
+        self.thermo.TPX = self.T1, self.P1, self.driven_mixture
+        return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T1 / self.thermo.mean_molecular_weight) ** 0.5
+
+    @property
+    def a4(self):
+        self.thermo.TPX = self.T4, self.P4, self.driver_mixture
+        return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T4 / self.thermo.mean_molecular_weight) ** 0.5
+
+    @property
+    def u(self):
+        return self._u
+
+    @u.setter
+    def u(self, value):
+        if value < 0:
+            raise ValueError
+
+        self._u = value
+        self.T2, self.P2, self.T5, self.P5 = FROSH(self.T1, self.P1, self.u, thermo=self.thermo)
 
     @staticmethod
     def get_shock_speed(x, t):
@@ -171,7 +207,7 @@ class Experiment:
 
         for i in range(n - 1):
             x_midpoint[i] = (x[i] + x[i + 1]) / 2
-            u_avg[i] = (x[i + 1] - x[i]) / t[i]
+            u_avg[i] = (x[i] - x[i + 1]) / t[i]
 
         A = np.vstack([x_midpoint, np.ones(n - 1)]).T
         model, residual = np.linalg.lstsq(A, u_avg, rcond=None)[:2]
