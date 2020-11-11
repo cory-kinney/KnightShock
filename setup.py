@@ -4,8 +4,8 @@ with open("README.md", 'r') as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="knight_shock",
-    version="0.1.0",
+    name="knightshock",
+    version="0.1.1",
     author="Cory Kinney",
     description="Shock tube experiment data analysis framework",
     long_description=long_description,
