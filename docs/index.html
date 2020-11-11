@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.1" />
+<title>knight_shock API documentation</title>
+<meta name="description" content="Shock tube experiment data analysis framework" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>knight_shock</code></h1>
+</header>
+<section id="section-intro">
+<p>Shock tube experiment data analysis framework</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;Shock tube experiment data analysis framework&#34;&#34;&#34;
+
+import cantera as ct
+import numpy as np
+import pyshock
+
+
+class Experiment:
+    &#34;&#34;&#34;Base class for shock tube experiments
+
+    Attributes
+    ----------
+    T1 : float
+        initial temperature [K] of the driven gas
+    P1 : float
+        initial pressure [Pa] of the driven gas
+    T4 : float
+        initial temperature [K] of the driver gas
+    P4 : float
+        initial pressure [Pa] of the driver gas
+    driven_mixture : str
+        Mixture composition of driven gas as comma-separated species: mole fraction pairs
+    driver_mixture : str
+        Mixture composition of driver gas as comma-separated species: mole fraction pairs
+    T2 : float
+        temperature [K] of the driven gas after the incident shock wave
+    P2 : float
+        pressure [Pa] of the driven gas after the incident shock wave
+    T5 : float
+        temperature [K] of the driver gas after the reflected shock wave
+    P5 : float
+        pressure [Pa] of the driver gas after the reflected shock wave
+
+    &#34;&#34;&#34;
+
+    def __init__(self):
+        self.T1 = None
+        self.P1 = None
+        self.T4 = None
+        self.P4 = None
+
+        self.driven_mixture = None
+        self.driver_mixture = None
+
+        self.T2 = None
+        self.P2 = None
+        self.T5 = None
+        self.P5 = None
+
+        self._thermo = None
+
+    @property
+    def thermo(self):
+        &#34;&#34;&#34;
+        `cantera.ThermoPhase` object for temperature- and pressure-dependent thermodynamic property calculations
+
+        .. Attention::
+           Temperature, pressure, and mixture composition (`TPX`) of `cantera.ThermoPhase` object must be updated before
+           accessing thermodynamic properties
+
+        &#34;&#34;&#34;
+        return self._thermo
+
+    @thermo.setter
+    def thermo(self, value):
+        if isinstance(value, ct.ThermoPhase):
+            self._thermo = value
+        elif isinstance(value, str):
+            try:
+                self._thermo = ct.ThermoPhase(value)
+            except ct.CanteraError:
+                raise ValueError(&#34;Invalid mechanism file&#34;)
+        else:
+            raise TypeError(&#34;Input must be a Cantera ThermoPhase object or file path to a valid mechanism file&#34;)
+
+    @property
+    def gamma1(self):
+        &#34;&#34;&#34;Specific heat ratio of driven gas at initial conditions&#34;&#34;&#34;
+        self.thermo.TPX = self.T1, self.P1, self.driven_mixture
+        return self.thermo.cp / self.thermo.cv
+
+    @property
+    def gamma4(self):
+        &#34;&#34;&#34;Specific heat ratio of driver gas at initial conditions&#34;&#34;&#34;
+        self.thermo.TPX = self.T4, self.P4, self.driver_mixture
+        return self.thermo.cp / self.thermo.cv
+
+    @property
+    def a1(self):
+        &#34;&#34;&#34;Speed of sound [m/s] in driven gas at initial conditions&#34;&#34;&#34;
+        self.thermo.TPX = self.T1, self.P1, self.driven_mixture
+        return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T1 / self.thermo.mean_molecular_weight) ** 0.5
+
+    @property
+    def a4(self):
+        &#34;&#34;&#34;Speed of sound [m/s] in driver gas at initial conditions&#34;&#34;&#34;
+        self.thermo.TPX = self.T4, self.P4, self.driver_mixture
+        return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T4 / self.thermo.mean_molecular_weight) ** 0.5
+
+    def calculate_shock_conditions(self, u):
+        &#34;&#34;&#34;Calculates `T2`, `P2`, `T5`, and `P5` for the experiment using `pyshock.FROSH`
+
+        Parameters
+        ----------
+        u : float
+            incident shock wave velocity [m/s]
+
+        &#34;&#34;&#34;
+
+        self.thermo.X = self.driven_mixture
+        self.T2, self.P2, self.T5, self.P5 = pyshock.FROSH(self.T1, self.P1, u, thermo=self.thermo)
+
+
+def calculate_shock_velocity(x, dt):
+    &#34;&#34;&#34;Computes the least-squares linear fit of average shock velocities over intervals
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        positions relative to end wall
+    dt : numpy.ndarray
+        differences in shock wave arrival times over intervals
+
+    Returns
+    -------
+    u : float
+        shock velocity extrapolated to end wall
+    attenuation : float
+        deceleration of the shock relative to end wall velocity
+    r2 : float
+        coefficient of determination of the linear fit
+
+    &#34;&#34;&#34;
+
+    x_midpoint = (x[1:] + x[:-1]) / 2
+    u_avg = np.abs(np.diff(x)) / dt
+
+    A = np.vstack([x_midpoint, np.ones(len(x_midpoint))]).T
+    model, residual = np.linalg.lstsq(A, u_avg, rcond=None)[:2]
+    r2 = (1 - residual / (u_avg.size * u_avg.var()))[0]
+
+    u = model[1]
+    attenuation = model[0] / model[1]
+
+    return u, attenuation, r2</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="knight_shock.calculate_shock_velocity"><code class="name flex">
+<span>def <span class="ident">calculate_shock_velocity</span></span>(<span>x, dt)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Computes the least-squares linear fit of average shock velocities over intervals</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>x</code></strong> :&ensp;<code>numpy.ndarray</code></dt>
+<dd>positions relative to end wall</dd>
+<dt><strong><code>dt</code></strong> :&ensp;<code>numpy.ndarray</code></dt>
+<dd>differences in shock wave arrival times over intervals</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>u</code></strong> :&ensp;<code>float</code></dt>
+<dd>shock velocity extrapolated to end wall</dd>
+<dt><strong><code>attenuation</code></strong> :&ensp;<code>float</code></dt>
+<dd>deceleration of the shock relative to end wall velocity</dd>
+<dt><strong><code>r2</code></strong> :&ensp;<code>float</code></dt>
+<dd>coefficient of determination of the linear fit</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def calculate_shock_velocity(x, dt):
+    &#34;&#34;&#34;Computes the least-squares linear fit of average shock velocities over intervals
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        positions relative to end wall
+    dt : numpy.ndarray
+        differences in shock wave arrival times over intervals
+
+    Returns
+    -------
+    u : float
+        shock velocity extrapolated to end wall
+    attenuation : float
+        deceleration of the shock relative to end wall velocity
+    r2 : float
+        coefficient of determination of the linear fit
+
+    &#34;&#34;&#34;
+
+    x_midpoint = (x[1:] + x[:-1]) / 2
+    u_avg = np.abs(np.diff(x)) / dt
+
+    A = np.vstack([x_midpoint, np.ones(len(x_midpoint))]).T
+    model, residual = np.linalg.lstsq(A, u_avg, rcond=None)[:2]
+    r2 = (1 - residual / (u_avg.size * u_avg.var()))[0]
+
+    u = model[1]
+    attenuation = model[0] / model[1]
+
+    return u, attenuation, r2</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="knight_shock.Experiment"><code class="flex name class">
+<span>class <span class="ident">Experiment</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Base class for shock tube experiments</p>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>T1</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial temperature [K] of the driven gas</dd>
+<dt><strong><code>P1</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial pressure [Pa] of the driven gas</dd>
+<dt><strong><code>T4</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial temperature [K] of the driver gas</dd>
+<dt><strong><code>P4</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial pressure [Pa] of the driver gas</dd>
+<dt><strong><code>driven_mixture</code></strong> :&ensp;<code>str</code></dt>
+<dd>Mixture composition of driven gas as comma-separated species: mole fraction pairs</dd>
+<dt><strong><code>driver_mixture</code></strong> :&ensp;<code>str</code></dt>
+<dd>Mixture composition of driver gas as comma-separated species: mole fraction pairs</dd>
+<dt><strong><code>T2</code></strong> :&ensp;<code>float</code></dt>
+<dd>temperature [K] of the driven gas after the incident shock wave</dd>
+<dt><strong><code>P2</code></strong> :&ensp;<code>float</code></dt>
+<dd>pressure [Pa] of the driven gas after the incident shock wave</dd>
+<dt><strong><code>T5</code></strong> :&ensp;<code>float</code></dt>
+<dd>temperature [K] of the driver gas after the reflected shock wave</dd>
+<dt><strong><code>P5</code></strong> :&ensp;<code>float</code></dt>
+<dd>pressure [Pa] of the driver gas after the reflected shock wave</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Experiment:
+    &#34;&#34;&#34;Base class for shock tube experiments
+
+    Attributes
+    ----------
+    T1 : float
+        initial temperature [K] of the driven gas
+    P1 : float
+        initial pressure [Pa] of the driven gas
+    T4 : float
+        initial temperature [K] of the driver gas
+    P4 : float
+        initial pressure [Pa] of the driver gas
+    driven_mixture : str
+        Mixture composition of driven gas as comma-separated species: mole fraction pairs
+    driver_mixture : str
+        Mixture composition of driver gas as comma-separated species: mole fraction pairs
+    T2 : float
+        temperature [K] of the driven gas after the incident shock wave
+    P2 : float
+        pressure [Pa] of the driven gas after the incident shock wave
+    T5 : float
+        temperature [K] of the driver gas after the reflected shock wave
+    P5 : float
+        pressure [Pa] of the driver gas after the reflected shock wave
+
+    &#34;&#34;&#34;
+
+    def __init__(self):
+        self.T1 = None
+        self.P1 = None
+        self.T4 = None
+        self.P4 = None
+
+        self.driven_mixture = None
+        self.driver_mixture = None
+
+        self.T2 = None
+        self.P2 = None
+        self.T5 = None
+        self.P5 = None
+
+        self._thermo = None
+
+    @property
+    def thermo(self):
+        &#34;&#34;&#34;
+        `cantera.ThermoPhase` object for temperature- and pressure-dependent thermodynamic property calculations
+
+        .. Attention::
+           Temperature, pressure, and mixture composition (`TPX`) of `cantera.ThermoPhase` object must be updated before
+           accessing thermodynamic properties
+
+        &#34;&#34;&#34;
+        return self._thermo
+
+    @thermo.setter
+    def thermo(self, value):
+        if isinstance(value, ct.ThermoPhase):
+            self._thermo = value
+        elif isinstance(value, str):
+            try:
+                self._thermo = ct.ThermoPhase(value)
+            except ct.CanteraError:
+                raise ValueError(&#34;Invalid mechanism file&#34;)
+        else:
+            raise TypeError(&#34;Input must be a Cantera ThermoPhase object or file path to a valid mechanism file&#34;)
+
+    @property
+    def gamma1(self):
+        &#34;&#34;&#34;Specific heat ratio of driven gas at initial conditions&#34;&#34;&#34;
+        self.thermo.TPX = self.T1, self.P1, self.driven_mixture
+        return self.thermo.cp / self.thermo.cv
+
+    @property
+    def gamma4(self):
+        &#34;&#34;&#34;Specific heat ratio of driver gas at initial conditions&#34;&#34;&#34;
+        self.thermo.TPX = self.T4, self.P4, self.driver_mixture
+        return self.thermo.cp / self.thermo.cv
+
+    @property
+    def a1(self):
+        &#34;&#34;&#34;Speed of sound [m/s] in driven gas at initial conditions&#34;&#34;&#34;
+        self.thermo.TPX = self.T1, self.P1, self.driven_mixture
+        return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T1 / self.thermo.mean_molecular_weight) ** 0.5
+
+    @property
+    def a4(self):
+        &#34;&#34;&#34;Speed of sound [m/s] in driver gas at initial conditions&#34;&#34;&#34;
+        self.thermo.TPX = self.T4, self.P4, self.driver_mixture
+        return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T4 / self.thermo.mean_molecular_weight) ** 0.5
+
+    def calculate_shock_conditions(self, u):
+        &#34;&#34;&#34;Calculates `T2`, `P2`, `T5`, and `P5` for the experiment using `pyshock.FROSH`
+
+        Parameters
+        ----------
+        u : float
+            incident shock wave velocity [m/s]
+
+        &#34;&#34;&#34;
+
+        self.thermo.X = self.driven_mixture
+        self.T2, self.P2, self.T5, self.P5 = pyshock.FROSH(self.T1, self.P1, u, thermo=self.thermo)</code></pre>
+</details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="knight_shock.Experiment.a1"><code class="name">var <span class="ident">a1</span></code></dt>
+<dd>
+<div class="desc"><p>Speed of sound [m/s] in driven gas at initial conditions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def a1(self):
+    &#34;&#34;&#34;Speed of sound [m/s] in driven gas at initial conditions&#34;&#34;&#34;
+    self.thermo.TPX = self.T1, self.P1, self.driven_mixture
+    return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T1 / self.thermo.mean_molecular_weight) ** 0.5</code></pre>
+</details>
+</dd>
+<dt id="knight_shock.Experiment.a4"><code class="name">var <span class="ident">a4</span></code></dt>
+<dd>
+<div class="desc"><p>Speed of sound [m/s] in driver gas at initial conditions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def a4(self):
+    &#34;&#34;&#34;Speed of sound [m/s] in driver gas at initial conditions&#34;&#34;&#34;
+    self.thermo.TPX = self.T4, self.P4, self.driver_mixture
+    return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T4 / self.thermo.mean_molecular_weight) ** 0.5</code></pre>
+</details>
+</dd>
+<dt id="knight_shock.Experiment.gamma1"><code class="name">var <span class="ident">gamma1</span></code></dt>
+<dd>
+<div class="desc"><p>Specific heat ratio of driven gas at initial conditions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def gamma1(self):
+    &#34;&#34;&#34;Specific heat ratio of driven gas at initial conditions&#34;&#34;&#34;
+    self.thermo.TPX = self.T1, self.P1, self.driven_mixture
+    return self.thermo.cp / self.thermo.cv</code></pre>
+</details>
+</dd>
+<dt id="knight_shock.Experiment.gamma4"><code class="name">var <span class="ident">gamma4</span></code></dt>
+<dd>
+<div class="desc"><p>Specific heat ratio of driver gas at initial conditions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def gamma4(self):
+    &#34;&#34;&#34;Specific heat ratio of driver gas at initial conditions&#34;&#34;&#34;
+    self.thermo.TPX = self.T4, self.P4, self.driver_mixture
+    return self.thermo.cp / self.thermo.cv</code></pre>
+</details>
+</dd>
+<dt id="knight_shock.Experiment.thermo"><code class="name">var <span class="ident">thermo</span></code></dt>
+<dd>
+<div class="desc"><p><code>cantera.ThermoPhase</code> object for temperature- and pressure-dependent thermodynamic property calculations</p>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>Temperature, pressure, and mixture composition (<code>TPX</code>) of <code>cantera.ThermoPhase</code> object must be updated before
+accessing thermodynamic properties</p>
+</div></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def thermo(self):
+    &#34;&#34;&#34;
+    `cantera.ThermoPhase` object for temperature- and pressure-dependent thermodynamic property calculations
+
+    .. Attention::
+       Temperature, pressure, and mixture composition (`TPX`) of `cantera.ThermoPhase` object must be updated before
+       accessing thermodynamic properties
+
+    &#34;&#34;&#34;
+    return self._thermo</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="knight_shock.Experiment.calculate_shock_conditions"><code class="name flex">
+<span>def <span class="ident">calculate_shock_conditions</span></span>(<span>self, u)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculates <code>T2</code>, <code>P2</code>, <code>T5</code>, and <code>P5</code> for the experiment using <code>pyshock.FROSH</code></p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>u</code></strong> :&ensp;<code>float</code></dt>
+<dd>incident shock wave velocity [m/s]</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def calculate_shock_conditions(self, u):
+    &#34;&#34;&#34;Calculates `T2`, `P2`, `T5`, and `P5` for the experiment using `pyshock.FROSH`
+
+    Parameters
+    ----------
+    u : float
+        incident shock wave velocity [m/s]
+
+    &#34;&#34;&#34;
+
+    self.thermo.X = self.driven_mixture
+    self.T2, self.P2, self.T5, self.P5 = pyshock.FROSH(self.T1, self.P1, u, thermo=self.thermo)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="knight_shock.calculate_shock_velocity" href="#knight_shock.calculate_shock_velocity">calculate_shock_velocity</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="knight_shock.Experiment" href="#knight_shock.Experiment">Experiment</a></code></h4>
+<ul class="">
+<li><code><a title="knight_shock.Experiment.a1" href="#knight_shock.Experiment.a1">a1</a></code></li>
+<li><code><a title="knight_shock.Experiment.a4" href="#knight_shock.Experiment.a4">a4</a></code></li>
+<li><code><a title="knight_shock.Experiment.calculate_shock_conditions" href="#knight_shock.Experiment.calculate_shock_conditions">calculate_shock_conditions</a></code></li>
+<li><code><a title="knight_shock.Experiment.gamma1" href="#knight_shock.Experiment.gamma1">gamma1</a></code></li>
+<li><code><a title="knight_shock.Experiment.gamma4" href="#knight_shock.Experiment.gamma4">gamma4</a></code></li>
+<li><code><a title="knight_shock.Experiment.thermo" href="#knight_shock.Experiment.thermo">thermo</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.1</a>.</p>
+</footer>
+</body>
+</html>
