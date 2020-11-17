@@ -1,4 +1,4 @@
-"""Shock tube experiment data analysis framework"""
+"""Shock tube experiment data analysis package"""
 
 import cantera as ct
 import numpy as np
@@ -6,7 +6,7 @@ import pyshock
 
 
 class Experiment:
-    """Base class for shock tube experiments
+    """Shock tube experiment base class
 
     Attributes
     ----------
@@ -130,7 +130,19 @@ def calculate_shock_velocity(x, dt):
     r2 : float
         coefficient of determination of the linear fit
 
+    Raises
+    ------
+    ValueError
+        `x` values are not greater than zero
+    ValueError
+        `x` values are not strictly increasing
+
     """
+
+    if np.any(x < 0):
+        raise ValueError("x values must be positive")
+    if not np.all(x[1:] > x[:-1]):
+        raise ValueError("x values must be strictly increasing")
 
     x_midpoint = (x[1:] + x[:-1]) / 2
     u_avg = np.abs(np.diff(x)) / dt
