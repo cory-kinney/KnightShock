@@ -3,7 +3,7 @@ Shock tube experiment planning and data analysis
 
 Notes
 -----
-The standard shock tube region notation followed in PyShock's code and documentation is:
+The standard shock tube region notation followed in KnightShock's code and documentation is:
 
 1. initial driven gas
 
