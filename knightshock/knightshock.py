@@ -2,6 +2,7 @@
 
 import cantera as ct
 import numpy as np
+from scipy import optimize
 import pyshock
 
 
@@ -42,6 +43,8 @@ class Experiment:
         self.driven_mixture = None
         self.driver_mixture = None
 
+        self.u = None
+
         self.T2 = None
         self.P2 = None
         self.T5 = None
@@ -71,7 +74,7 @@ class Experiment:
             except ct.CanteraError:
                 raise ValueError("Invalid mechanism file")
         else:
-            raise TypeError("Input must be a Cantera ThermoPhase object or file path to a valid mechanism file")
+            raise TypeError("Value must be of type cantera.ThermoPhase or a file path to a valid mechanism file")
 
     @property
     def gamma1(self):
@@ -97,62 +100,93 @@ class Experiment:
         self.thermo.TPX = self.T4, self.P4, self.driver_mixture
         return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T4 / self.thermo.mean_molecular_weight) ** 0.5
 
-    def calculate_shock_conditions(self, u):
-        """Calculates `T2`, `P2`, `T5`, and `P5` for the experiment using `pyshock.FROSH`
+    @property
+    def M(self):
+        """Mach number of incident shock wave"""
+        return self.u / self.a1
+
+    def calculate_shock_conditions(self):
+        """Calculates `T2`, `P2`, `T5`, and `P5` for the experiment using `pyshock.shock_conditions_FROSH`"""
+
+        self.thermo.X = self.driven_mixture
+        self.T2, self.P2, self.T5, self.P5 = \
+            pyshock.shock_conditions_FROSH(self.T1, self.P1, self.u, thermo=self.thermo)
+
+    @staticmethod
+    def calculate_shock_velocity(x, dt):
+        """Computes the least-squares linear fit of average shock velocities over intervals
 
         Parameters
         ----------
+        x : numpy.ndarray
+            positions relative to end wall
+        dt : numpy.ndarray
+            differences in shock wave arrival times over intervals
+
+        Returns
+        -------
         u : float
-            incident shock wave velocity [m/s]
+            shock velocity extrapolated to end wall
+        attenuation : float
+            deceleration of the shock relative to end wall velocity
+        r2 : float
+            coefficient of determination of the linear fit
+
+        Raises
+        ------
+        ValueError
+            `x` values are not greater than zero
+        ValueError
+            `x` values are not strictly increasing
 
         """
 
-        self.thermo.X = self.driven_mixture
-        self.T2, self.P2, self.T5, self.P5 = pyshock.FROSH(self.T1, self.P1, u, thermo=self.thermo)
+        if np.any(x < 0):
+            raise ValueError("x values must be positive")
+        if not np.all(x[1:] > x[:-1]):
+            raise ValueError("x values must be strictly increasing")
+
+        x_midpoint = (x[1:] + x[:-1]) / 2
+        u_avg = np.abs(np.diff(x)) / dt
+
+        A = np.vstack([x_midpoint, np.ones(len(x_midpoint))]).T
+        model, residual = np.linalg.lstsq(A, u_avg, rcond=None)[:2]
+        r2 = (1 - residual / (u_avg.size * u_avg.var()))[0]
+
+        u = model[1]
+        attenuation = model[0] / model[1]
+
+        return u, attenuation, r2
 
 
-def calculate_shock_velocity(x, dt):
-    """Computes the least-squares linear fit of average shock velocities over intervals
+class ExperimentPlan:
+    def __init__(self, *, T1=None, P1=None, T4=None, P4=None, T5=None, P5=None, gamma1=None, gamma4=None,
+                 MW1=None, MW4=None, area_ratio=1, bracket=None):
+        def calc_P5(M):
+            P2 = pyshock.normal_shock_pressure_ratio(M, gamma1) * P1
+            M_reflected = pyshock.reflected_shock_Mach_number(M, gamma1)
+            return pyshock.normal_shock_pressure_ratio(M_reflected, gamma1) * P2
 
-    Parameters
-    ----------
-    x : numpy.ndarray
-        positions relative to end wall
-    dt : numpy.ndarray
-        differences in shock wave arrival times over intervals
+        def calc_T5(M):
+            T2 = pyshock.normal_shock_temperature_ratio(M, gamma1) * T1
+            M_reflected = pyshock.reflected_shock_Mach_number(M, gamma1)
+            return pyshock.normal_shock_temperature_ratio(M_reflected, gamma1) * T2
 
-    Returns
-    -------
-    u : float
-        shock velocity extrapolated to end wall
-    attenuation : float
-        deceleration of the shock relative to end wall velocity
-    r2 : float
-        coefficient of determination of the linear fit
+        if not bracket:
+            bracket = [1.01, 5]
 
-    Raises
-    ------
-    ValueError
-        `x` values are not greater than zero
-    ValueError
-        `x` values are not strictly increasing
+        if P1 and P4 and T1 and T4 and gamma1 and gamma4 and MW1 and MW4:
+            root_results = optimize.root_scalar(
+                lambda M: P4 / P1 - pyshock.shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4)[0],
+                bracket=bracket)
+        elif P1 and P5 and gamma1:
+            root_results = optimize.root_scalar(lambda M: P5 - calc_P5(M), bracket=bracket)
+        elif T1 and T5 and gamma1:
+            root_results = optimize.root_scalar(lambda M: T5 - calc_T5(M), bracket=bracket)
+        else:
+            raise ValueError
 
-    """
+        if not root_results.converged:
+            raise RuntimeError
 
-    if np.any(x < 0):
-        raise ValueError("x values must be positive")
-    if not np.all(x[1:] > x[:-1]):
-        raise ValueError("x values must be strictly increasing")
-
-    x_midpoint = (x[1:] + x[:-1]) / 2
-    u_avg = np.abs(np.diff(x)) / dt
-
-    A = np.vstack([x_midpoint, np.ones(len(x_midpoint))]).T
-    model, residual = np.linalg.lstsq(A, u_avg, rcond=None)[:2]
-    r2 = (1 - residual / (u_avg.size * u_avg.var()))[0]
-
-    u = model[1]
-    attenuation = model[0] / model[1]
-
-    return u, attenuation, r2
-
+        self.M = root_results.root
