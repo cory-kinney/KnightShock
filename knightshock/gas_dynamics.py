@@ -1,21 +1,4 @@
-"""
-Gas dynamics module with equations and solvers for shock tube experiment prediction and analysis
-
-Notes
------
-The standard shock tube region notation followed in PyShock's code and documentation is:
-
-1. initial driven gas
-
-2. post-incident-shock driven gas
-
-3. expanded driver gas
-
-4. initial driver gas
-
-5. post-reflected-shock driven gas (test conditions)
-
-"""
+"""Shock tube gas dynamics equations and solvers"""
 
 import numpy as np
 import cantera as ct
@@ -118,8 +101,8 @@ def reflected_shock_Mach_number(M, gamma):
 
 def shock_conditions_ideal(T1, P1, M, gamma1):
     """Calculates the post-incident-shock and post-reflected-shock conditions according to ideal shock relations using
-    `pyshock.normal_shock_temperature_ratio`, `pyshock.normal_shock_pressure_ratio`, and
-    `pyshock.reflected_shock_Mach_number`.
+    `knightshock.gas_dynamics.normal_shock_temperature_ratio`, `knightshock.gas_dynamics.normal_shock_pressure_ratio`,
+    and `knightshock.gas_dynamics.reflected_shock_Mach_number`.
 
     Parameters
     ----------
@@ -160,8 +143,8 @@ def shock_conditions_FROSH(T1, P1, M, *, thermo, max_iter=1000, convergence_crit
     """Implementation of the FROzen SHock (FROSH) algorithm for calculating post-incident-shock and post-reflected-shock
     conditions from initial conditions and shock velocity. The two-dimensional iterative Newton-Raphson algorithm
     implemented for solving the Rankine-Hugoniot relations is derived by Campbell et al.[^1]. Initial guesses for
-    region 2 conditions use the ideal shock equations implemented in `pyshock.normal_shock_pressure_ratio` and
-    `pyshock.normal_shock_temperature_ratio`.
+    region 2 conditions use the ideal shock equations implemented in
+    `knightshock.gas_dynamics.normal_shock_pressure_ratio`and `knightshock.gas_dynamics.normal_shock_temperature_ratio`.
 
     Parameters
     ----------
@@ -419,8 +402,9 @@ def shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4, *, area_rati
 
 def tailored_mixture(M, T1, T4, MW1, MW4, gamma1, gamma4, *, area_ratio=1):
     """Calculates the species mole fractions that tailor the interaction between the reflected shock wave and the
-    contact surface. The mole fractions for which the output of `pyshock.shock_tube_flow_properties` satisfies the
-    tailoring condition described by Hong et al.[^1] is iteratively calculated using `scipy.optimize.root_scalar`.
+    contact surface. The mole fractions for which the output of
+    `knightshock.gas_dynamics.shock_tube_flow_properties` satisfies the tailoring condition described by Hong et al.[^1]
+    is iteratively calculated using `scipy.optimize.root_scalar`.
 
     Parameters
     ----------
