@@ -1,12 +1,12 @@
 # KnightShock
-Shock tube experiment data analysis framework
+Shock tube experiment planning and data analysis package
 
 ### Installation
-KnightShock can be installed by cloning the repository and running the following command in the terminal
+KnightShock can be installed by cloning the repository and executing
 
 `python setup.py install`
 
-KnightShock requires [PyShock](https://github.com/corykinney/PyShock) and the Python interface for [Cantera](https://github.com/Cantera/cantera).
+KnightShock requires the Python interface for [Cantera](https://github.com/Cantera/cantera).
 
 ### Documentation
 

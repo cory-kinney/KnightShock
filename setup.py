@@ -5,9 +5,9 @@ with open("README.md", 'r') as fh:
 
 setuptools.setup(
     name="knightshock",
-    version="0.1.1",
+    version="0.1.2",
     author="Cory Kinney",
-    description="Shock tube experiment data analysis framework",
+    description="Shock tube experiment data analysis package",
     long_description=long_description,
     url="https://github.com/cory-kinney/KnightShock",
     packages=setuptools.find_packages(),
