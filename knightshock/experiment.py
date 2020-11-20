@@ -3,7 +3,8 @@
 import cantera as ct
 import numpy as np
 from scipy import optimize
-import pyshock
+
+from knightshock import gas_dynamics
 
 
 class Experiment:
@@ -110,7 +111,7 @@ class Experiment:
 
         self.thermo.X = self.driven_mixture
         self.T2, self.P2, self.T5, self.P5 = \
-            pyshock.shock_conditions_FROSH(self.T1, self.P1, self.u, thermo=self.thermo)
+            gas_dynamics.shock_conditions_FROSH(self.T1, self.P1, self.u, thermo=self.thermo)
 
     @staticmethod
     def calculate_shock_velocity(x, dt):
@@ -163,21 +164,21 @@ class ExperimentPlan:
     def __init__(self, *, T1=None, P1=None, T4=None, P4=None, T5=None, P5=None, gamma1=None, gamma4=None,
                  MW1=None, MW4=None, area_ratio=1, bracket=None):
         def calc_P5(M):
-            P2 = pyshock.normal_shock_pressure_ratio(M, gamma1) * P1
-            M_reflected = pyshock.reflected_shock_Mach_number(M, gamma1)
-            return pyshock.normal_shock_pressure_ratio(M_reflected, gamma1) * P2
+            P2 = gas_dynamics.normal_shock_pressure_ratio(M, gamma1) * P1
+            M_reflected = gas_dynamics.reflected_shock_Mach_number(M, gamma1)
+            return gas_dynamics.normal_shock_pressure_ratio(M_reflected, gamma1) * P2
 
         def calc_T5(M):
-            T2 = pyshock.normal_shock_temperature_ratio(M, gamma1) * T1
-            M_reflected = pyshock.reflected_shock_Mach_number(M, gamma1)
-            return pyshock.normal_shock_temperature_ratio(M_reflected, gamma1) * T2
+            T2 = gas_dynamics.normal_shock_temperature_ratio(M, gamma1) * T1
+            M_reflected = gas_dynamics.reflected_shock_Mach_number(M, gamma1)
+            return gas_dynamics.normal_shock_temperature_ratio(M_reflected, gamma1) * T2
 
         if not bracket:
             bracket = [1.01, 5]
 
         if P1 and P4 and T1 and T4 and gamma1 and gamma4 and MW1 and MW4:
             root_results = optimize.root_scalar(
-                lambda M: P4 / P1 - pyshock.shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4)[0],
+                lambda M: P4 / P1 - gas_dynamics.shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4)[0],
                 bracket=bracket)
         elif P1 and P5 and gamma1:
             root_results = optimize.root_scalar(lambda M: P5 - calc_P5(M), bracket=bracket)
