@@ -123,14 +123,6 @@ class Experiment:
         """Mach number of incident shock wave"""
         return self.u / self.a1
 
-    def calculate_shock_conditions(self):
-        """Calculates `T2`, `P2`, `T5`, and `P5` for the experiment using
-        `knightshock.gas_dynamics.shock_conditions_FROSH`"""
-
-        self.thermo.X = self.driven_mixture
-        self.T2, self.P2, self.T5, self.P5 = \
-            gas_dynamics.shock_conditions_FROSH(self.T1, self.P1, self.u, thermo=self.thermo)
-
     @staticmethod
     def calculate_shock_velocity(x, dt):
         """Computes the least-squares linear fit of average shock velocities over intervals
@@ -156,14 +148,14 @@ class Experiment:
         ValueError
             `x` values are not greater than zero
         ValueError
-            `x` values are not strictly increasing
+            `x` values are not strictly decreasing
 
         """
 
         if np.any(x < 0):
             raise ValueError("x values must be positive")
-        if not np.all(x[1:] > x[:-1]):
-            raise ValueError("x values must be strictly increasing")
+        if not np.all(x[1:] < x[:-1]):
+            raise ValueError("x values must be strictly decreasing")
 
         x_midpoint = (x[1:] + x[:-1]) / 2
         u_avg = np.abs(np.diff(x)) / dt

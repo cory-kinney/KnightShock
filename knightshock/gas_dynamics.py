@@ -133,8 +133,8 @@ def shock_conditions_ideal(T1, P1, M, gamma1):
 
     M_r = reflected_shock_Mach_number(M, gamma1)
 
-    T5 = normal_shock_temperature_ratio(M_r, gamma1)
-    P5 = normal_shock_pressure_ratio(M_r, gamma1)
+    T5 = normal_shock_temperature_ratio(M_r, gamma1) * T2
+    P5 = normal_shock_pressure_ratio(M_r, gamma1) * P2
 
     return T2, P2, T5, P5
 

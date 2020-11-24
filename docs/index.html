@@ -25,7 +25,7 @@
 <section id="section-intro">
 <p>Shock tube experiment planning and data analysis</p>
 <h2 id="notes">Notes</h2>
-<p>The standard shock tube region notation followed in PyShock's code and documentation is:</p>
+<p>The standard shock tube region notation followed in KnightShock's code and documentation is:</p>
 <ol>
 <li>
 <p>initial driven gas</p>
@@ -52,7 +52,7 @@ Shock tube experiment planning and data analysis
 
 Notes
 -----
-The standard shock tube region notation followed in PyShock&#39;s code and documentation is:
+The standard shock tube region notation followed in KnightShock&#39;s code and documentation is:
 
 1. initial driven gas
 
@@ -172,14 +172,6 @@ class Experiment:
         &#34;&#34;&#34;Mach number of incident shock wave&#34;&#34;&#34;
         return self.u / self.a1
 
-    def calculate_shock_conditions(self):
-        &#34;&#34;&#34;Calculates `T2`, `P2`, `T5`, and `P5` for the experiment using
-        `knightshock.gas_dynamics.shock_conditions_FROSH`&#34;&#34;&#34;
-
-        self.thermo.X = self.driven_mixture
-        self.T2, self.P2, self.T5, self.P5 = \
-            gas_dynamics.shock_conditions_FROSH(self.T1, self.P1, self.u, thermo=self.thermo)
-
     @staticmethod
     def calculate_shock_velocity(x, dt):
         &#34;&#34;&#34;Computes the least-squares linear fit of average shock velocities over intervals
@@ -205,14 +197,14 @@ class Experiment:
         ValueError
             `x` values are not greater than zero
         ValueError
-            `x` values are not strictly increasing
+            `x` values are not strictly decreasing
 
         &#34;&#34;&#34;
 
         if np.any(x &lt; 0):
             raise ValueError(&#34;x values must be positive&#34;)
-        if not np.all(x[1:] &gt; x[:-1]):
-            raise ValueError(&#34;x values must be strictly increasing&#34;)
+        if not np.all(x[1:] &lt; x[:-1]):
+            raise ValueError(&#34;x values must be strictly decreasing&#34;)
 
         x_midpoint = (x[1:] + x[:-1]) / 2
         u_avg = np.abs(np.diff(x)) / dt
@@ -228,8 +220,13 @@ class Experiment:
 
 
 class ExperimentPlan:
-    def __init__(self, *, T1=None, P1=None, T4=None, P4=None, T5=None, P5=None, gamma1=None, gamma4=None,
-                 MW1=None, MW4=None, area_ratio=1, bracket=None):
+    &#34;&#34;&#34;&#34;&#34;&#34;
+
+    def __init__(self, *, T1, T4=None):
+        self.T1 = T1
+        self.T4 = T4 if T4 is not None else T1
+
+    def solve_boi(self, P1, P4, P5, T1, T4, T5, gamma1, MW1, MW4, gamma4, area_ratio=1, bracket=None):
         def calc_P5(M):
             P2 = gas_dynamics.normal_shock_pressure_ratio(M, gamma1) * P1
             M_reflected = gas_dynamics.reflected_shock_Mach_number(M, gamma1)
@@ -245,7 +242,8 @@ class ExperimentPlan:
 
         if P1 and P4 and T1 and T4 and gamma1 and gamma4 and MW1 and MW4:
             root_results = optimize.root_scalar(
-                lambda M: P4 / P1 - gas_dynamics.shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4)[0],
+                lambda M: P4 / P1 - gas_dynamics.shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4,
+                                                                            area_ratio=area_ratio)[0],
                 bracket=bracket)
         elif P1 and P5 and gamma1:
             root_results = optimize.root_scalar(lambda M: P5 - calc_P5(M), bracket=bracket)
@@ -407,14 +405,6 @@ class ExperimentPlan:
         &#34;&#34;&#34;Mach number of incident shock wave&#34;&#34;&#34;
         return self.u / self.a1
 
-    def calculate_shock_conditions(self):
-        &#34;&#34;&#34;Calculates `T2`, `P2`, `T5`, and `P5` for the experiment using
-        `knightshock.gas_dynamics.shock_conditions_FROSH`&#34;&#34;&#34;
-
-        self.thermo.X = self.driven_mixture
-        self.T2, self.P2, self.T5, self.P5 = \
-            gas_dynamics.shock_conditions_FROSH(self.T1, self.P1, self.u, thermo=self.thermo)
-
     @staticmethod
     def calculate_shock_velocity(x, dt):
         &#34;&#34;&#34;Computes the least-squares linear fit of average shock velocities over intervals
@@ -440,14 +430,14 @@ class ExperimentPlan:
         ValueError
             `x` values are not greater than zero
         ValueError
-            `x` values are not strictly increasing
+            `x` values are not strictly decreasing
 
         &#34;&#34;&#34;
 
         if np.any(x &lt; 0):
             raise ValueError(&#34;x values must be positive&#34;)
-        if not np.all(x[1:] &gt; x[:-1]):
-            raise ValueError(&#34;x values must be strictly increasing&#34;)
+        if not np.all(x[1:] &lt; x[:-1]):
+            raise ValueError(&#34;x values must be strictly decreasing&#34;)
 
         x_midpoint = (x[1:] + x[:-1]) / 2
         u_avg = np.abs(np.diff(x)) / dt
@@ -489,7 +479,7 @@ class ExperimentPlan:
 <dt><code>ValueError</code></dt>
 <dd><code>x</code> values are not greater than zero</dd>
 <dt><code>ValueError</code></dt>
-<dd><code>x</code> values are not strictly increasing</dd>
+<dd><code>x</code> values are not strictly decreasing</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -520,14 +510,14 @@ def calculate_shock_velocity(x, dt):
     ValueError
         `x` values are not greater than zero
     ValueError
-        `x` values are not strictly increasing
+        `x` values are not strictly decreasing
 
     &#34;&#34;&#34;
 
     if np.any(x &lt; 0):
         raise ValueError(&#34;x values must be positive&#34;)
-    if not np.all(x[1:] &gt; x[:-1]):
-        raise ValueError(&#34;x values must be strictly increasing&#34;)
+    if not np.all(x[1:] &lt; x[:-1]):
+        raise ValueError(&#34;x values must be strictly decreasing&#34;)
 
     x_midpoint = (x[1:] + x[:-1]) / 2
     u_avg = np.abs(np.diff(x)) / dt
@@ -640,32 +630,10 @@ def thermo(self):
 </details>
 </dd>
 </dl>
-<h3>Methods</h3>
-<dl>
-<dt id="knightshock.Experiment.calculate_shock_conditions"><code class="name flex">
-<span>def <span class="ident">calculate_shock_conditions</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Calculates <code>T2</code>, <code>P2</code>, <code>T5</code>, and <code>P5</code> for the experiment using
-<code><a title="knightshock.gas_dynamics.shock_conditions_FROSH" href="gas_dynamics.html#knightshock.gas_dynamics.shock_conditions_FROSH">shock_conditions_FROSH()</a></code></p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def calculate_shock_conditions(self):
-    &#34;&#34;&#34;Calculates `T2`, `P2`, `T5`, and `P5` for the experiment using
-    `knightshock.gas_dynamics.shock_conditions_FROSH`&#34;&#34;&#34;
-
-    self.thermo.X = self.driven_mixture
-    self.T2, self.P2, self.T5, self.P5 = \
-        gas_dynamics.shock_conditions_FROSH(self.T1, self.P1, self.u, thermo=self.thermo)</code></pre>
-</details>
-</dd>
-</dl>
 </dd>
 <dt id="knightshock.ExperimentPlan"><code class="flex name class">
 <span>class <span class="ident">ExperimentPlan</span></span>
-<span>(</span><span>*, T1=None, P1=None, T4=None, P4=None, T5=None, P5=None, gamma1=None, gamma4=None, MW1=None, MW4=None, area_ratio=1, bracket=None)</span>
+<span>(</span><span>*, T1, T4=None)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -674,8 +642,13 @@ def thermo(self):
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class ExperimentPlan:
-    def __init__(self, *, T1=None, P1=None, T4=None, P4=None, T5=None, P5=None, gamma1=None, gamma4=None,
-                 MW1=None, MW4=None, area_ratio=1, bracket=None):
+    &#34;&#34;&#34;&#34;&#34;&#34;
+
+    def __init__(self, *, T1, T4=None):
+        self.T1 = T1
+        self.T4 = T4 if T4 is not None else T1
+
+    def solve_boi(self, P1, P4, P5, T1, T4, T5, gamma1, MW1, MW4, gamma4, area_ratio=1, bracket=None):
         def calc_P5(M):
             P2 = gas_dynamics.normal_shock_pressure_ratio(M, gamma1) * P1
             M_reflected = gas_dynamics.reflected_shock_Mach_number(M, gamma1)
@@ -691,7 +664,8 @@ def thermo(self):
 
         if P1 and P4 and T1 and T4 and gamma1 and gamma4 and MW1 and MW4:
             root_results = optimize.root_scalar(
-                lambda M: P4 / P1 - gas_dynamics.shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4)[0],
+                lambda M: P4 / P1 - gas_dynamics.shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4,
+                                                                            area_ratio=area_ratio)[0],
                 bracket=bracket)
         elif P1 and P5 and gamma1:
             root_results = optimize.root_scalar(lambda M: P5 - calc_P5(M), bracket=bracket)
@@ -705,6 +679,50 @@ def thermo(self):
 
         self.M = root_results.root</code></pre>
 </details>
+<h3>Methods</h3>
+<dl>
+<dt id="knightshock.ExperimentPlan.solve_boi"><code class="name flex">
+<span>def <span class="ident">solve_boi</span></span>(<span>self, P1, P4, P5, T1, T4, T5, gamma1, MW1, MW4, gamma4, area_ratio=1, bracket=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def solve_boi(self, P1, P4, P5, T1, T4, T5, gamma1, MW1, MW4, gamma4, area_ratio=1, bracket=None):
+    def calc_P5(M):
+        P2 = gas_dynamics.normal_shock_pressure_ratio(M, gamma1) * P1
+        M_reflected = gas_dynamics.reflected_shock_Mach_number(M, gamma1)
+        return gas_dynamics.normal_shock_pressure_ratio(M_reflected, gamma1) * P2
+
+    def calc_T5(M):
+        T2 = gas_dynamics.normal_shock_temperature_ratio(M, gamma1) * T1
+        M_reflected = gas_dynamics.reflected_shock_Mach_number(M, gamma1)
+        return gas_dynamics.normal_shock_temperature_ratio(M_reflected, gamma1) * T2
+
+    if not bracket:
+        bracket = [1.01, 5]
+
+    if P1 and P4 and T1 and T4 and gamma1 and gamma4 and MW1 and MW4:
+        root_results = optimize.root_scalar(
+            lambda M: P4 / P1 - gas_dynamics.shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4,
+                                                                        area_ratio=area_ratio)[0],
+            bracket=bracket)
+    elif P1 and P5 and gamma1:
+        root_results = optimize.root_scalar(lambda M: P5 - calc_P5(M), bracket=bracket)
+    elif T1 and T5 and gamma1:
+        root_results = optimize.root_scalar(lambda M: T5 - calc_T5(M), bracket=bracket)
+    else:
+        raise ValueError
+
+    if not root_results.converged:
+        raise RuntimeError
+
+    self.M = root_results.root</code></pre>
+</details>
+</dd>
+</dl>
 </dd>
 </dl>
 </section>
@@ -730,7 +748,6 @@ def thermo(self):
 <li><code><a title="knightshock.Experiment.M" href="#knightshock.Experiment.M">M</a></code></li>
 <li><code><a title="knightshock.Experiment.a1" href="#knightshock.Experiment.a1">a1</a></code></li>
 <li><code><a title="knightshock.Experiment.a4" href="#knightshock.Experiment.a4">a4</a></code></li>
-<li><code><a title="knightshock.Experiment.calculate_shock_conditions" href="#knightshock.Experiment.calculate_shock_conditions">calculate_shock_conditions</a></code></li>
 <li><code><a title="knightshock.Experiment.calculate_shock_velocity" href="#knightshock.Experiment.calculate_shock_velocity">calculate_shock_velocity</a></code></li>
 <li><code><a title="knightshock.Experiment.gamma1" href="#knightshock.Experiment.gamma1">gamma1</a></code></li>
 <li><code><a title="knightshock.Experiment.gamma4" href="#knightshock.Experiment.gamma4">gamma4</a></code></li>
@@ -739,6 +756,9 @@ def thermo(self):
 </li>
 <li>
 <h4><code><a title="knightshock.ExperimentPlan" href="#knightshock.ExperimentPlan">ExperimentPlan</a></code></h4>
+<ul class="">
+<li><code><a title="knightshock.ExperimentPlan.solve_boi" href="#knightshock.ExperimentPlan.solve_boi">solve_boi</a></code></li>
+</ul>
 </li>
 </ul>
 </li>
