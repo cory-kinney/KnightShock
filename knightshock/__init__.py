@@ -17,6 +17,7 @@ The standard shock tube region notation followed in KnightShock's code and docum
 
 """
 
+import warnings
 import cantera as ct
 import numpy as np
 from scipy import optimize
@@ -171,35 +172,204 @@ class Experiment:
 
 
 class ExperimentPlan:
-    def __init__(self, *, T1=None, P1=None, T4=None, P4=None, T5=None, P5=None, gamma1=None, gamma4=None,
-                 MW1=None, MW4=None, area_ratio=1, bracket=None):
-        def calc_P5(M):
-            P2 = gas_dynamics.normal_shock_pressure_ratio(M, gamma1) * P1
-            M_reflected = gas_dynamics.reflected_shock_Mach_number(M, gamma1)
-            return gas_dynamics.normal_shock_pressure_ratio(M_reflected, gamma1) * P2
+    """Class for planning experiments with different combinations of initial conditions and target shock conditions"""
 
-        def calc_T5(M):
-            T2 = gas_dynamics.normal_shock_temperature_ratio(M, gamma1) * T1
-            M_reflected = gas_dynamics.reflected_shock_Mach_number(M, gamma1)
-            return gas_dynamics.normal_shock_temperature_ratio(M_reflected, gamma1) * T2
+    def __init__(self):
+        self.T1 = None
+        self.T2 = None
+        self.T4 = None
+        self.T5 = None
 
-        if not bracket:
-            bracket = [1.01, 5]
+        self.P1 = None
+        self.P2 = None
+        self.P4 = None
+        self.P5 = None
 
-        if P1 and P4 and T1 and T4 and gamma1 and gamma4 and MW1 and MW4:
-            root_results = optimize.root_scalar(
-                lambda M: P4 / P1 - gas_dynamics.shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4)[0],
-                bracket=bracket)
-        elif P1 and P5 and gamma1:
-            root_results = optimize.root_scalar(lambda M: P5 - calc_P5(M), bracket=bracket)
-        elif T1 and T5 and gamma1:
-            root_results = optimize.root_scalar(lambda M: T5 - calc_T5(M), bracket=bracket)
+        self.MW1 = None
+        self.MW4 = None
+        self.gamma1 = None
+        self.gamma4 = None
+
+        self.M = None
+
+        self.area_ratio = 1
+        self.constant_properties = True  # Not implemented
+        self.bracket = [1.01, 5]
+
+    def solve(self):
+        """Attempts to solve for missing values that can be calculated from defined parameters."""
+
+        if not (self.T4 is not None and self.MW1 is not None and self.MW4 is not None and self.gamma1 is not None
+                and self.gamma4 is not None):
+            raise ValueError("T4, MW1, MW4, gamma1, gamma4 must be specified")
+
+        solved = False
+
+        while solved is False:
+            if self.M is None:
+                try:
+                    self.M = self._solve_M()
+                    continue
+                except ValueError:
+                    pass
+
+            if self.P1 is None:
+                try:
+                    self.P1 = self._solve_P1()
+                    continue
+                except ValueError:
+                    pass
+
+            if self.P2 is None:
+                try:
+                    self.P2 = self._solve_P2()
+                    continue
+                except ValueError:
+                    pass
+
+            if self.P4 is None:
+                try:
+                    self.P4 = self._solve_P4()
+                    continue
+                except ValueError:
+                    pass
+
+            if self.P5 is None:
+                try:
+                    self.P5 = self._solve_P5()
+                    continue
+                except ValueError:
+                    pass
+
+            if self.T1 is None:
+                try:
+                    self.T1 = self._solve_T1()
+                    continue
+                except ValueError:
+                    pass
+
+            if self.T2 is None:
+                try:
+                    self.T2 = self._solve_T2()
+                    continue
+                except ValueError:
+                    pass
+
+            if self.T5 is None:
+                try:
+                    self.T5 = self._solve_T5()
+                    continue
+                except ValueError:
+                    pass
+
+            solved = True
+
+    def _solve_M(self):
+        if self.P5 is not None and self.P1 is not None:
+            def P5(M):
+                P2 = gas_dynamics.normal_shock_pressure_ratio(M, self.gamma1) * self.P1
+                M_reflected = gas_dynamics.reflected_shock_Mach_number(M, self.gamma1)
+                return gas_dynamics.normal_shock_pressure_ratio(M_reflected, self.gamma1) * P2
+
+            results = optimize.root_scalar(lambda M: self.P5 - P5(M), bracket=self.bracket)
+            if not results.converged:
+                raise RuntimeError
+
+            return results.root
+
+        if self.T5 is not None and self.T1 is not None:
+            def T5(M):
+                T2 = gas_dynamics.normal_shock_temperature_ratio(M, self.gamma1) * self.T1
+                M_reflected = gas_dynamics.reflected_shock_Mach_number(M, self.gamma1)
+                return gas_dynamics.normal_shock_temperature_ratio(M_reflected, self.gamma1) * T2
+
+            results = optimize.root_scalar(lambda M: self.T5 - T5(M), bracket=self.bracket)
+            if not results.converged:
+                raise RuntimeError
+
+            return results.root
+
+        if self.P4 is not None and self.P1 is not None:
+            def P4_P1(M):
+                return gas_dynamics.shock_tube_flow_properties(M, self.T1, self.T4, self.MW1, self.MW4,
+                                                               self.gamma1, self.gamma4, area_ratio=self.area_ratio)[0]
+
+            results = optimize.root_scalar(lambda M: self.P4 / self.P1 - P4_P1(M), bracket=self.bracket)
+            if not results.converged:
+                raise RuntimeError
+
+            return results.root
+
         else:
             raise ValueError
 
-        if not root_results.converged:
-            raise RuntimeError
+    def _solve_P1(self):
+        if self.P5 is not None and self.M is not None:
+            P2_P1 = gas_dynamics.normal_shock_pressure_ratio(self.M, self.gamma1)
+            M_reflected = gas_dynamics.reflected_shock_Mach_number(self.M, self.gamma1)
+            P5_P2 = gas_dynamics.normal_shock_pressure_ratio(M_reflected, self.gamma1)
 
-        self.M = root_results.root
+            return self.P5 / P5_P2 / P2_P1
 
+        elif self.P4 is not None and self.M is not None:
+            P4_P1 = gas_dynamics.shock_tube_flow_properties(self.M, self.T1, self.T4, self.MW1, self.MW4,
+                                                            self.gamma1, self.gamma4, area_ratio=self.area_ratio)[0]
+            return P4_P1 * self.P1
 
+        else:
+            raise ValueError
+
+    def _solve_P2(self):
+        if self.P1 is not None and self.M is not None:
+            P2_P1 = gas_dynamics.normal_shock_pressure_ratio(self.M, self.gamma1)
+            return P2_P1 * self.P1
+
+        else:
+            raise ValueError
+
+    def _solve_P4(self):
+        if self.P1 is not None and self.M is not None:
+            P4_P1 = gas_dynamics.shock_tube_flow_properties(self.M, self.T1, self.T4, self.MW1, self.MW4,
+                                                            self.gamma1, self.gamma4, area_ratio=self.area_ratio)[0]
+            return self.P1 * P4_P1
+
+        else:
+            raise ValueError
+
+    def _solve_P5(self):
+        if self.P1 is not None and self.M is not None:
+            P2_P1 = gas_dynamics.normal_shock_pressure_ratio(self.M, self.gamma1)
+            M_reflected = gas_dynamics.reflected_shock_Mach_number(self.M, self.gamma1)
+            P5_P2 = gas_dynamics.normal_shock_pressure_ratio(M_reflected, self.gamma1)
+            return P5_P2 * P2_P1 * self.P1
+
+        else:
+            raise ValueError
+
+    def _solve_T1(self):
+        if self.T5 is not None and self.M is not None:
+            T2_T1 = gas_dynamics.normal_shock_temperature_ratio(self.M, self.gamma1)
+            M_reflected = gas_dynamics.reflected_shock_Mach_number(self.M, self.gamma1)
+            T5_T2 = gas_dynamics.normal_shock_temperature_ratio(M_reflected, self.gamma1)
+            return self.T5 / T5_T2 / T2_T1
+
+        else:
+            raise ValueError
+
+    def _solve_T2(self):
+        if self.T1 is not None and self.M is not None:
+            T2_T1 = gas_dynamics.normal_shock_temperature_ratio(self.M, self.gamma1)
+            return T2_T1 * self.T1
+
+        else:
+            raise ValueError
+
+    def _solve_T5(self):
+        if self.T1 is not None and self.M is not None:
+            T2_T1 = gas_dynamics.normal_shock_temperature_ratio(self.M, self.gamma1)
+            M_reflected = gas_dynamics.reflected_shock_Mach_number(self.M, self.gamma1)
+            T5_T2 = gas_dynamics.normal_shock_temperature_ratio(M_reflected, self.gamma1)
+            return T5_T2 * T2_T1 * self.T1
+
+        else:
+            raise ValueError
