@@ -93,65 +93,110 @@ def reflected_shock_Mach_number(M, gamma):
         raise ValueError("M must be greater than one")
 
     a = M / (M ** 2 - 1) * (1 + 2 * (gamma - 1) / (gamma + 1) ** 2 * (M ** 2 - 1) * (gamma + 1 / M ** 2)) ** 0.5
-    b = -1
-    c = -a
 
-    return (-b + (b ** 2 - 4 * a * c) ** 0.5) / a / 2
+    return (-1 + (1 + 4 * a ** 2) ** 0.5) / a / 2
 
 
-def shock_conditions_ideal(T1, P1, M, gamma1):
-    """Calculates the post-incident-shock and post-reflected-shock conditions according to ideal shock relations using
-    `knightshock.gas_dynamics.normal_shock_temperature_ratio`, `knightshock.gas_dynamics.normal_shock_pressure_ratio`,
-    and `knightshock.gas_dynamics.reflected_shock_Mach_number`.
+def T2_ideal(T1, M, gamma):
+    """Calculates the ideal post-incident-shock temperature using
+    `knightshock.gas_dynamics.normal_shock_temperature_ratio`.
 
     Parameters
     ----------
     T1 : float
-        initial absolute temperature of drive gas
-    P1 : float
-        initial pressure of driven gas
+        initial temperature
     M : float
         incident shock Mach number
-    gamma1 : float
-        specific heat ratio of driven gas
+    gamma : float
+        specific heat ratio
 
     Returns
     -------
     T2 : float
-        temperature of post-incident-shock driven gas
-    P2 : float
-        pressure of post-incident-shock driven gas
-    T5 : float
-        temperature of post-reflected-shock driven gas
-    P5 : float
-        pressure of post-reflected-shock driven gas
+        ideal post-incident-shock temperature
 
     """
+    return T1 * normal_shock_temperature_ratio(M, gamma)
 
-    T2 = normal_shock_temperature_ratio(M, gamma1) * T1
-    P2 = normal_shock_pressure_ratio(M, gamma1) * P1
 
-    M_r = reflected_shock_Mach_number(M, gamma1)
+def P2_ideal(P1, M, gamma):
+    """Calculates the ideal post-incident-shock pressure using `knightshock.gas_dynamics.normal_shock_pressure_ratio`.
 
-    T5 = normal_shock_temperature_ratio(M_r, gamma1) * T2
-    P5 = normal_shock_pressure_ratio(M_r, gamma1) * P2
+    Parameters
+    ----------
+    P1 : float
+        initial pressure
+    M : float
+        incident shock Mach number
+    gamma : float
+        specific heat ratio
 
-    return T2, P2, T5, P5
+    Returns
+    -------
+    P2 : float
+        ideal post-incident-shock pressure
+
+    """
+    return P1 * normal_shock_pressure_ratio(M, gamma)
+
+
+def T5_ideal(T1, M, gamma):
+    """Calculates the ideal post-reflected-shock temperature using
+    `knightshock.gas_dynamics.normal_shock_temperature_ratio` and `knightshock.gas_dynamics.reflected_Mach_number`.
+
+    Parameters
+    ----------
+    T1 : float
+        initial temperature
+    M : float
+        incident shock Mach number
+    gamma : float
+        specific heat ratio
+
+    Returns
+    -------
+    T5 : float
+        ideal post-reflected-shock temperature
+
+    """
+    return T2_ideal(T1, M, gamma) * normal_shock_temperature_ratio(reflected_shock_Mach_number(M, gamma), gamma)
+
+
+def P5_ideal(P1, M, gamma):
+    """Calculates the ideal post-reflected-shock pressure using `knightshock.gas_dynamics.normal_shock_pressure_ratio`
+    and `knightshock.gas_dynamics.reflected_Mach_number`.
+
+    Parameters
+    ----------
+    P1 : float
+        initial pressure
+    M : float
+        incident shock Mach number
+    gamma : float
+        specific heat ratio
+
+    Returns
+    -------
+    P5 : float
+        ideal post-reflected-shock pressure
+
+    """
+    return P2_ideal(P1, M, gamma) * normal_shock_pressure_ratio(reflected_shock_Mach_number(M, gamma), gamma)
 
 
 def shock_conditions_FROSH(T1, P1, M, *, thermo, max_iter=1000, convergence_criteria=1e-6):
     """Implementation of the FROzen SHock (FROSH) algorithm for calculating post-incident-shock and post-reflected-shock
     conditions from initial conditions and shock velocity. The two-dimensional iterative Newton-Raphson algorithm
-    implemented for solving the Rankine-Hugoniot relations is derived by Campbell et al.[^1]. Initial guesses for
-    region 2 conditions use the ideal shock equations implemented in
-    `knightshock.gas_dynamics.normal_shock_pressure_ratio`and `knightshock.gas_dynamics.normal_shock_temperature_ratio`.
+    implemented for solving the Rankine-Hugoniot relations is derived by Campbell et al.[^1]. Uses
+    `knightshock.gas_dynamics.T2_ideal` and `knightshock.gas_dynamics.P2_ideal` as initial guesses for algorithm
+    stability.
 
     Parameters
     ----------
     T1 : float
-        initial temperature of driven gas [K]
+        initial temperature [K]
     P1 : float
-        initial pressure of driven gas [Pa]
+        initial pressure [Pa]
     M : float
         incident shock Mach number
     thermo : `cantera.ThermoPhase`
@@ -164,13 +209,13 @@ def shock_conditions_FROSH(T1, P1, M, *, thermo, max_iter=1000, convergence_crit
     Returns
     -------
     T2 : float
-        temperature of post-incident-shock driven gas [K]
+        post-incident-shock temperature [K]
     P2 : float
-        pressure of post-incident-shock driven gas [Pa]
+        post-incident-shock pressure [Pa]
     T5 : float
-        temperature of post-reflected-shock driven gas [K]
+        post-reflected-shock temperature [K]
     P5 : float
-        pressure of post-reflected-shock driven gas [Pa]
+        post-reflected-shock pressure [Pa]
 
     Raises
     ------
@@ -211,8 +256,8 @@ def shock_conditions_FROSH(T1, P1, M, *, thermo, max_iter=1000, convergence_crit
     # Calculates ideal P2 and T2 for initial guesses
     u = a1 * M  # [m/s]
 
-    T2_guess = T2 = T1 * normal_shock_temperature_ratio(M, gamma1)  # [K]
-    P2_guess = P2 = P1 * normal_shock_pressure_ratio(M, gamma1)  # [Pa]
+    T2_guess = T2 = T2_ideal(T1, M, gamma1)  # [K]
+    P2_guess = P2 = P2_ideal(P1, M, gamma1)  # [Pa]
 
     # Iterate to find P2 and T2
     for i in range(max_iter):
@@ -330,13 +375,10 @@ def shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4, *, area_rati
 
     Returns
     -------
-    P4_P1 : float
+    P4_P1, M3a, Me, M3 : float, float, float, float
         ratio of driver to driven initial pressures
-    M3a : float
         Mach number of flow before nozzle
-    Me : float
         Mach number of flow at nozzle exit
-    M3 : float
         Mach number of fully expanded driver flow
 
     Raises
