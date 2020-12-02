@@ -94,7 +94,7 @@ def reflected_shock_Mach_number(M, gamma):
 
     a = M / (M ** 2 - 1) * (1 + 2 * (gamma - 1) / (gamma + 1) ** 2 * (M ** 2 - 1) * (gamma + 1 / M ** 2)) ** 0.5
 
-    return (-1 + (1 + 4 * a ** 2) ** 0.5) / a / 2
+    return (1 + (1 + 4 * a ** 2) ** 0.5) / a / 2
 
 
 def T2_ideal(T1, M, gamma):
