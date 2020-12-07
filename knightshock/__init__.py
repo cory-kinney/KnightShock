@@ -216,7 +216,7 @@ class Experiment(ShockTubeState):
     def plot_shock_velocity(self):
         plt.figure()
         plt.scatter(self._x_midpoint, self._u_average, color='r')
-        plt.plot([0, self.x.max()], [self.u, self.u + self.attenuation * self.x.max()], '-k')
+        plt.plot([0, self.x.max()], [self.u, self.u * (1 + self.attenuation * self.x.max())], '-k')
         plt.xlim([0, self.x.max()])
         plt.show()
 
