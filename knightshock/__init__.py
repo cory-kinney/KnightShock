@@ -1,5 +1,4 @@
-"""
-Shock tube experiment planning and data analysis
+"""Shock tube experiment planning and data analysis package
 
 Notes
 -----
@@ -17,82 +16,92 @@ The standard shock tube region notation followed in KnightShock's code and docum
 
 """
 
+from knightshock import gas_dynamics
+from matplotlib import pyplot as plt
+from scipy import optimize
 import cantera as ct
 import numpy as np
-from scipy import optimize
-
-from knightshock import gas_dynamics
 
 
-class Experiment:
-    """Shock tube experiment base class
+class ShockTubeState:
+    """
 
     Attributes
     ----------
-    T1 : float
-        initial temperature [K] of the driven gas
-    P1 : float
-        initial pressure [Pa] of the driven gas
-    T4 : float
-        initial temperature [K] of the driver gas
-    P4 : float
-        initial pressure [Pa] of the driver gas
     driven_mixture : str
-        Mixture composition of driven gas as comma-separated species: mole fraction pairs
+        mixture composition of driven gas as comma-separated species and mole fraction pairs
     driver_mixture : str
-        Mixture composition of driver gas as comma-separated species: mole fraction pairs
+        mixture composition of driver gas as comma-separated species and mole fraction pairs
+    T1 : float
+        initial temperature of the driven gas
+    P1 : float
+        initial pressure of the driven gas
+    T4 : float
+        initial temperature of the driver gas
+    P4 : float
+        initial pressure of the driver gas
     T2 : float
-        temperature [K] of the driven gas after the incident shock wave
+        temperature of the driven gas after the incident shock
     P2 : float
-        pressure [Pa] of the driven gas after the incident shock wave
+        pressure of the driven gas after the incident shock
     T5 : float
-        temperature [K] of the driver gas after the reflected shock wave
+        temperature of the driver gas after the reflected shock
     P5 : float
-        pressure [Pa] of the driver gas after the reflected shock wave
+        pressure of the driver gas after the reflected shock
+    u : float
+        velocity of incident shock
+    M : float
+        Mach number of incident shock
+    area_ratio : float
+        ratio of driver area to driven area
+
+    Notes
+    -----
+    Temperature and pressure must be in units of K and Pa, respectively, for thermodynamic property calculations.
 
     """
 
-    def __init__(self):
-        self.T1 = None
-        self.P1 = None
-        self.T4 = None
-        self.P4 = None
+    def __init__(self, thermo):
+        """
+        Parameters
+        ----------
+        thermo:
+            object for temperature- and pressure-dependent thermodynamic property calculations
 
+        """
+
+        if not isinstance(thermo, ct.ThermoPhase):
+            raise TypeError("Thermo must be instance of cantera.ThermoPhase")
+
+        self.thermo = thermo
         self.driven_mixture = None
         self.driver_mixture = None
 
-        self.u = None
-
+        self.T1 = None
+        self.P1 = None
         self.T2 = None
         self.P2 = None
+        self.T4 = None
+        self.P4 = None
         self.T5 = None
         self.P5 = None
 
-        self._thermo = None
+        self.u = None
+        self.M = None
+
+        self.area_ratio = 1
 
     @property
-    def thermo(self):
-        """
-        `cantera.ThermoPhase` object for temperature- and pressure-dependent thermodynamic property calculations
+    def MW1(self):
+        """Mean molecular weight of driven gas at initial conditions"""
+        self.thermo.TPX = self.T1, self.P1, self.driven_mixture
+        return self.thermo.mean_molecular_weight
 
-        .. Attention::
-           Temperature, pressure, and mixture composition (`TPX`) of `cantera.ThermoPhase` object must be updated before
-           accessing thermodynamic properties
-
-        """
-        return self._thermo
-
-    @thermo.setter
-    def thermo(self, value):
-        if isinstance(value, ct.ThermoPhase):
-            self._thermo = value
-        elif isinstance(value, str):
-            try:
-                self._thermo = ct.ThermoPhase(value)
-            except ct.CanteraError:
-                raise ValueError("Invalid mechanism file")
-        else:
-            raise TypeError("Value must be of type cantera.ThermoPhase or a file path to a valid mechanism file")
+    @property
+    def MW4(self):
+        """Mean molecular weight of driver gas at initial conditions"""
+        self.thermo.TPX = self.T4, self.P4, self.driver_mixture
+        return self.thermo.mean_molecular_weight
 
     @property
     def gamma1(self):
@@ -108,40 +117,60 @@ class Experiment:
 
     @property
     def a1(self):
-        """Speed of sound [m/s] in driven gas at initial conditions"""
+        """Speed of sound in driven gas at initial conditions"""
         self.thermo.TPX = self.T1, self.P1, self.driven_mixture
         return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T1 / self.thermo.mean_molecular_weight) ** 0.5
 
     @property
     def a4(self):
-        """Speed of sound [m/s] in driver gas at initial conditions"""
+        """Speed of sound in driver gas at initial conditions"""
         self.thermo.TPX = self.T4, self.P4, self.driver_mixture
         return (self.thermo.cp / self.thermo.cv * ct.gas_constant * self.T4 / self.thermo.mean_molecular_weight) ** 0.5
 
+
+class Experiment(ShockTubeState):
+    """Shock tube experiment base class that extends the `knightshock.ShockTubeState` class
+
+    Attributes
+    ----------
+    x : numpy.ndarray
+        positions relative to end wall
+    dt : numpy.ndarray
+        differences in shock wave arrival times over intervals
+
+    """
+
+    def __init__(self, thermo):
+        super().__init__(thermo)
+
+        # Data points for shock velocity time-of-flight calculation
+        self._x = None
+        self._dt = None
+
+        self._x_midpoint = None
+        self._u_average = None
+
+        self.attenuation = None
+        self.r2 = None
+
     @property
-    def M(self):
-        """Mach number of incident shock wave"""
-        return self.u / self.a1
+    def x(self):
+        return self._x
 
-    @staticmethod
-    def calculate_shock_velocity(x, dt):
+    @x.setter
+    def x(self, value):
+        self._x = np.array(value)
+
+    @property
+    def dt(self):
+        return self._dt
+
+    @dt.setter
+    def dt(self, value):
+        self._dt = np.array(value)
+
+    def update_shock_velocity(self):
         """Computes the least-squares linear fit of average shock velocities over intervals
-
-        Parameters
-        ----------
-        x : numpy.ndarray
-            positions relative to end wall
-        dt : numpy.ndarray
-            differences in shock wave arrival times over intervals
-
-        Returns
-        -------
-        u : float
-            shock velocity extrapolated to end wall
-        attenuation : float
-            deceleration of the shock relative to end wall velocity
-        r2 : float
-            coefficient of determination of the linear fit
 
         Raises
         ------
@@ -152,56 +181,66 @@ class Experiment:
 
         """
 
-        if np.any(x < 0):
+        if np.any(self.x < 0):
             raise ValueError("x values must be positive")
-        if not np.all(x[1:] < x[:-1]):
+        if not np.all(self.x[1:] < self.x[:-1]):
             raise ValueError("x values must be strictly decreasing")
 
-        x_midpoint = (x[1:] + x[:-1]) / 2
-        u_avg = np.abs(np.diff(x)) / dt
+        self._x_midpoint = (self.x[1:] + self.x[:-1]) / 2
+        self._u_average = np.abs(np.diff(self.x)) / self.dt
 
-        A = np.vstack([x_midpoint, np.ones(len(x_midpoint))]).T
-        model, residual = np.linalg.lstsq(A, u_avg, rcond=None)[:2]
-        r2 = (1 - residual / (u_avg.size * u_avg.var()))[0]
+        A = np.vstack([self._x_midpoint, np.ones(len(self._x_midpoint))]).T
+        model, residual = np.linalg.lstsq(A, self._u_average, rcond=None)[:2]
 
-        u = model[1]
-        attenuation = model[0] / model[1]
+        self.u = model[1]
+        self.attenuation = model[0] / model[1]
+        self.r2 = (1 - residual / (self._u_average.size * self._u_average.var()))[0]
 
-        return u, attenuation, r2
+    def update_shock_conditions(self, *, constant_properties=False):
+        """
+        Parameters
+        ----------
+        constant_properties : bool (optional)
+
+        """
+        if constant_properties:
+            self.T2 = gas_dynamics.T2_ideal(self.T1, self.M, self.gamma1)
+            self.P2 = gas_dynamics.P2_ideal(self.P1, self.M, self.gamma1)
+            self.T5 = gas_dynamics.T5_ideal(self.T1, self.M, self.gamma1)
+            self.P5 = gas_dynamics.P5_ideal(self.P1, self.M, self.gamma1)
+        else:
+            self.thermo.X = self.driven_mixture
+            self.T2, self.P2, self.T5, self.P5 = \
+                gas_dynamics.shock_conditions_FROSH(self.T1, self.P1, self.M, thermo=self.thermo)
+
+    def plot_shock_velocity(self):
+        plt.figure()
+        plt.scatter(self._x_midpoint, self._u_average, color='r')
+        plt.plot([0, self.x.max()], [self.u, self.u + self.attenuation * self.x.max()], '-k')
+        plt.xlim([0, self.x.max()])
+        plt.show()
 
 
-class ExperimentPlan:
+class ExperimentPlan(ShockTubeState):
     """Class for planning experiments with different combinations of initial conditions and target shock conditions"""
 
-    def __init__(self):
-        self.T1 = None
-        self.T2 = None
-        self.T4 = None
-        self.T5 = None
-
-        self.P1 = None
-        self.P2 = None
-        self.P4 = None
-        self.P5 = None
-
-        self.MW1 = None
-        self.MW4 = None
-        self.gamma1 = None
-        self.gamma4 = None
-
-        self.M = None
+    def __init__(self, thermo):
+        super().__init__(thermo)
 
         self.area_ratio = 1
 
     def solve(self, method, *, bracket=None):
-        if self.P1 is None or self.T1 is None or self.T4 is None or self.MW1 is None or self.MW4 is None \
-                or self.gamma1 is None or self.gamma4 is None:
+        if self.P1 is None or self.T1 is None or self.T4 is None:
             raise ValueError
 
         if bracket is None:
             bracket = [1.001, 5]
 
-        if method == "P5/P1":
+        if method == "M":
+            if self.M is None:
+                raise ValueError
+
+        elif method == "P5/P1":
             if self.P5 is None or self.P1 is None:
                 raise ValueError
 
@@ -248,6 +287,7 @@ class ExperimentPlan:
         else:
             raise ValueError("Invalid method specified")
 
+        self.u = self.M * self.a1
         self.P2 = gas_dynamics.P2_ideal(self.P1, self.M, self.gamma1)
         self.T2 = gas_dynamics.T2_ideal(self.T1, self.M, self.gamma1)
         if method != "P5/P1":
