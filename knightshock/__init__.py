@@ -40,11 +40,8 @@ class ShockVelocityError(Exception):
 class ShockTubeState:
     """Base class defining the state of the shock tube with basic validation of parameter values"""
 
-    def __init__(self, solution):
-        if not isinstance(solution, ct.Solution):
-            raise TypeError
-
-        self._solution = solution
+    def __init__(self, mechanism):
+        self._gas = ct.Solution(mechanism)
         self._driven_mixture = None
         self._driver_mixture = None
 
@@ -67,7 +64,7 @@ class ShockTubeState:
 
     @driven_mixture.setter
     def driven_mixture(self, value):
-        self._solution.X = value  # Attempts to set mixture property for Cantera to validate input
+        self._gas.X = value  # Attempts to set mixture property for Cantera to validate input
         self._driven_mixture = value
 
     @property
@@ -77,7 +74,7 @@ class ShockTubeState:
 
     @driver_mixture.setter
     def driver_mixture(self, value):
-        self._solution.X = value  # Attempts to set mixture property for Cantera to validate input
+        self._gas.X = value  # Attempts to set mixture property for Cantera to validate input
         self._driver_mixture = value
 
     @property
@@ -87,7 +84,7 @@ class ShockTubeState:
 
     @T1.setter
     def T1(self, value):
-        if not value > self._solution.min_temp:
+        if not value > self._gas.min_temp:
             raise ValueError("Temperature must be greater than zero")
         self._T1 = value
 
@@ -197,39 +194,39 @@ class ShockTubeState:
     @property
     def MW1(self):
         """Initial driven mixture mean molecular weight [kg/kmol]"""
-        self._solution.TPX = self.T1, self.P1, self.driven_mixture
-        return self._solution.mean_molecular_weight
+        self._gas.TPX = self.T1, self.P1, self.driven_mixture
+        return self._gas.mean_molecular_weight
 
     @property
     def MW4(self):
         """Initial driver mixture mean molecular weight [kg/kmol]"""
-        self._solution.TPX = self.T4, self.P4, self.driver_mixture
-        return self._solution.mean_molecular_weight
+        self._gas.TPX = self.T4, self.P4, self.driver_mixture
+        return self._gas.mean_molecular_weight
 
     @property
     def gamma1(self):
         """Specific heat ratio of driven gas at initial conditions"""
-        self._solution.TPX = self.T1, self.P1, self.driven_mixture
-        return self._solution.cp / self._solution.cv
+        self._gas.TPX = self.T1, self.P1, self.driven_mixture
+        return self._gas.cp / self._gas.cv
 
     @property
     def gamma4(self):
         """Specific heat ratio of driver gas at initial conditions"""
-        self._solution.TPX = self.T4, self.P4, self.driver_mixture
-        return self._solution.cp / self._solution.cv
+        self._gas.TPX = self.T4, self.P4, self.driver_mixture
+        return self._gas.cp / self._gas.cv
 
     @property
     def a1(self):
         """Speed of sound in driven gas at initial conditions [m/s]"""
-        self._solution.TPX = self.T1, self.P1, self.driven_mixture
-        return (self._solution.cp / self._solution.cv * ct.gas_constant / self._solution.mean_molecular_weight
+        self._gas.TPX = self.T1, self.P1, self.driven_mixture
+        return (self._gas.cp / self._gas.cv * ct.gas_constant / self._gas.mean_molecular_weight
                 * self.T1) ** 0.5
 
     @property
     def a4(self):
         """Speed of sound in driver gas at initial conditions [m/s]"""
-        self._solution.TPX = self.T4, self.P4, self.driver_mixture
-        return (self._solution.cp / self._solution.cv * ct.gas_constant / self._solution.mean_molecular_weight
+        self._gas.TPX = self.T4, self.P4, self.driver_mixture
+        return (self._gas.cp / self._gas.cv * ct.gas_constant / self._gas.mean_molecular_weight
                 * self.T4) ** 0.5
 
 
@@ -260,8 +257,8 @@ class Experiment(ShockTubeState):
             T5 = gas_dynamics.T5_ideal(self.T1, self.M, self.gamma1)
             P5 = gas_dynamics.P5_ideal(self.P1, self.M, self.gamma1)
         else:
-            self._solution.X = self.driven_mixture
-            T2, P2, T5, P5 = gas_dynamics.shock_conditions_FROSH(self.T1, self.P1, self.M, thermo=self._solution)
+            self._gas.X = self.driven_mixture
+            T2, P2, T5, P5 = gas_dynamics.shock_conditions_FROSH(self.T1, self.P1, self.M, thermo=self._gas)
 
         return T2, P2, T5, P5
 
