@@ -1,6 +1,7 @@
 """Shock tube experiment planning and data analysis package"""
 
 from knightshock import gas_dynamics
+from tabulate import tabulate
 import cantera as ct
 import numpy as np
 
@@ -28,7 +29,8 @@ class ShockTubeState:
             raise IndexError("Invalid region number")
 
     def __str__(self):
-        raise NotImplementedError
+        return tabulate([[i, self[i].T, self[i].P / 1e5] for i in [1, 2, 4, 5]],
+                        headers=['State', 'Temperature [K]', 'Pressure [bar]'])
 
     @classmethod
     def prediction(cls, X_driver, X_driven, *, T1=None, T4=None, T5=None, P1=None, P4=None, P5=None, mechanism,
