@@ -1,5 +1,6 @@
 """Shock tube experiment planning and data analysis package"""
 
+from matplotlib import pyplot as plt
 from knightshock import gas_dynamics
 from tabulate import tabulate
 import cantera as ct
@@ -29,6 +30,7 @@ class ShockTubeState:
             raise IndexError("Invalid region number")
 
     def __str__(self):
+        """Tabulates pressure and temperature for states into a str for printing"""
         return tabulate([[i, self[i].T, self[i].P / 1e5] for i in [1, 2, 4, 5]],
                         headers=['State', 'Temperature [K]', 'Pressure [bar]'])
 
@@ -43,7 +45,7 @@ class ShockTubeState:
         raise NotImplementedError
 
 
-class Experiment:
+class ShockTubeExperiment:
     def __init__(self, mechanism):
         self.state = ShockTubeState(mechanism)
         self._u = None
@@ -138,3 +140,81 @@ class Experiment:
         r2 = (1 - residual / (u_average.size * u_average.var()))[0]
 
         return u0, attenuation, r2
+
+
+class ShockTubeReactorModel:
+    """Constant volume, adiabatic reactor model for shock tube experiment chemical kinetics simulations"""
+
+    def __init__(self, gas):
+        self.gas = gas
+        self.reactor = ct.Reactor(self.gas)
+        self.reactor_net = ct.ReactorNet([self.reactor])
+        self.states = ct.SolutionArray(self.gas, extra=['t'])
+
+    def run(self, time):
+        """Runs the simulation
+
+        Parameters
+        ----------
+        time : float
+            duration of the simulation [s]
+
+        """
+        t = 0
+        while t < time:
+            t = self.reactor_net.step()
+            self.states.append(self.reactor.thermo.state, t=t)
+            print("t = {:10.3e} ms\tT = {:10.3f} K\tP = {:10.3f}"
+                  .format(self.reactor_net.time, self.reactor.T, self.reactor.thermo.P))
+
+    def IDT_max_pressure_rise(self):
+        """Calculates the ignition delay time from the maximum pressure rise
+
+        Returns
+        -------
+        float
+            ignition delay time [s]
+
+        """
+        return self.states.t[np.argmax(np.diff(self.states.P) / np.diff(self.states.t))]
+
+    def IDT_peak_species_concentration(self, species):
+        """Calculates the ignition delay time from the peak of the species mole fraction
+
+        Parameters
+        ----------
+        species : str
+
+        Returns
+        -------
+        float
+            ignition delay time [s]
+
+        """
+        return self.states.t[np.argmax(self.states(species).X)]
+
+    def plot_temperature_history(self):
+        plt.figure()
+        plt.plot(self.states.t * 1e3, self.states.T)
+        plt.xlabel("Time (ms)")
+        plt.ylabel("Temperature (K)")
+        plt.show()
+
+    def plot_pressure_history(self):
+        plt.figure()
+        plt.plot(self.states.t * 1e3, self.states.P / 1e5)
+        plt.xlabel("Time (ms)")
+        plt.ylabel("Pressure (bar)")
+        plt.show()
+
+    def plot_concentration(self, species):
+        if isinstance(species, str):
+            species = [species]
+
+        plt.figure()
+        for s in species:
+            plt.plot(self.states.t * 1e3, self.states(s).X, label=s)
+        plt.xlabel("Time (ms)")
+        plt.ylabel("Mole Fraction")
+        plt.legend(loc='upper right')
+        plt.show()
