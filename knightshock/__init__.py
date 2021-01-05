@@ -3,7 +3,9 @@
 from matplotlib import pyplot as plt
 from knightshock import gas_dynamics
 from tabulate import tabulate
+from tqdm import tqdm
 import cantera as ct
+import pandas as pd
 import numpy as np
 
 
@@ -151,21 +153,26 @@ class ShockTubeReactorModel:
         self.reactor_net = ct.ReactorNet([self.reactor])
         self.states = ct.SolutionArray(self.gas, extra=['t'])
 
-    def run(self, time):
-        """Runs the simulation
-
-        Parameters
-        ----------
-        time : float
-            duration of the simulation [s]
-
-        """
+    def run(self, duration, *, freq=10):
         t = 0
-        while t < time:
-            t = self.reactor_net.step()
-            self.states.append(self.reactor.thermo.state, t=t)
-            print("t = {:10.3e} ms\tT = {:10.3f} K\tP = {:10.3f}"
-                  .format(self.reactor_net.time, self.reactor.T, self.reactor.thermo.P))
+        counter = 0
+
+        with tqdm(total=duration, bar_format="|{bar:25}| {desc}") as progress_bar:
+            while t < duration:
+                t = self.reactor_net.step()
+
+                if counter % freq == 0 or t > duration:
+                    self.states.append(self.reactor.thermo.state, t=t)
+
+                    time = "{t:.{dec}f} {unit}".format(t=t * (1e3 if t > 1e-3 else 1e6), dec=3 if t > 1e-3 else 1,
+                                                       unit="ms" if t > 1e-3 else "µs")
+
+                    progress_bar.n = t if t < duration else duration
+                    progress_bar.set_description(
+                        "{t}, T = {T:.1f} K, P = {P:.2f} bar".format(t=time, T=self.reactor.T,
+                                                                     P=self.reactor.thermo.P / 1e5))
+
+                counter += 1
 
     def IDT_max_pressure_rise(self):
         """Calculates the ignition delay time from the maximum pressure rise
@@ -217,4 +224,38 @@ class ShockTubeReactorModel:
         plt.xlabel("Time (ms)")
         plt.ylabel("Mole Fraction")
         plt.legend(loc='upper right')
+        plt.show()
+
+
+class ParameterStudy:
+    def __init__(self, df, mechanism):
+        self.df = df
+        self.mechanism = mechanism
+
+    @classmethod
+    def product(cls, T, P, X, mechanism):
+        index = pd.MultiIndex.from_product([T, P, X], names=["T", "P", "X"])
+        return cls(pd.DataFrame(index=index).reset_index(), mechanism)
+
+    def run(self, duration):
+        IDT = []
+
+        for index, row in self.df.iterrows():
+            T, P, X = row["T"], row["P"], row["X"]
+            print("{}/{} | T = {:.1f} K, P = {:.2f} bar, [{}]".format(index + 1, len(self.df.index), T, P / 1e5, X))
+
+            gas = ct.Solution(self.mechanism)
+            gas.TPX = T, P, X
+            model = ShockTubeReactorModel(gas)
+            model.run(duration)
+
+            IDT.append(model.IDT_max_pressure_rise())
+
+        self.df["IDT"] = IDT
+
+    def plot_IDT_profile(self, P, X):
+        data = self.df.loc[(self.df["P"] == P) & (self.df["X"] == X)]
+
+        plt.figure()
+        plt.scatter(*zip(*[(row["T"], row["IDT"]) for index, row in data.iterrows()]))
         plt.show()
