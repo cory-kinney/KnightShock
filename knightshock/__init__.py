@@ -148,31 +148,30 @@ class ShockTubeReactorModel:
     """Constant volume, adiabatic reactor model for shock tube experiment chemical kinetics simulations"""
 
     def __init__(self, gas):
-        self.gas = gas
-        self.reactor = ct.Reactor(self.gas)
+        self.reactor = ct.Reactor(gas)
         self.reactor_net = ct.ReactorNet([self.reactor])
-        self.states = ct.SolutionArray(self.gas, extra=['t'])
+        self.states = ct.SolutionArray(gas, extra=['t'])
 
-    def run(self, duration, *, freq=10):
+    def run(self, duration, *, log_frequency=10):
         t = 0
-        counter = 0
+        iteration = 0
 
         with tqdm(total=duration, bar_format="|{bar:25}| {desc}") as progress_bar:
             while t < duration:
                 t = self.reactor_net.step()
 
-                if counter % freq == 0 or t > duration:
+                # Saves state and updates progress bar for initial state, final state, and iteration numbers that are
+                # multiples of the log frequency
+                if iteration % log_frequency == 0 or t > duration:
                     self.states.append(self.reactor.thermo.state, t=t)
 
+                    progress_bar.n = t if t < duration else duration
                     time = "{t:.{dec}f} {unit}".format(t=t * (1e3 if t > 1e-3 else 1e6), dec=3 if t > 1e-3 else 1,
                                                        unit="ms" if t > 1e-3 else "µs")
+                    progress_bar.set_description_str("{t}, T = {T:.1f} K, P = {P:.2f} bar"
+                                                     .format(t=time, T=self.reactor.T, P=self.reactor.thermo.P / 1e5))
 
-                    progress_bar.n = t if t < duration else duration
-                    progress_bar.set_description(
-                        "{t}, T = {T:.1f} K, P = {P:.2f} bar".format(t=time, T=self.reactor.T,
-                                                                     P=self.reactor.thermo.P / 1e5))
-
-                counter += 1
+                iteration += 1
 
     def IDT_max_pressure_rise(self):
         """Calculates the ignition delay time from the maximum pressure rise
@@ -229,12 +228,12 @@ class ShockTubeReactorModel:
 
 class ParameterStudy:
     def __init__(self, df, mechanism):
+        self.gas = ct.Solution(mechanism)
         self.df = df
-        self.mechanism = mechanism
 
     @classmethod
     def product(cls, T, P, X, mechanism):
-        index = pd.MultiIndex.from_product([T, P, X], names=["T", "P", "X"])
+        index = pd.MultiIndex.from_product([X, P, T], names=["X", "P", "T"])
         return cls(pd.DataFrame(index=index).reset_index(), mechanism)
 
     def run(self, duration):
@@ -242,11 +241,10 @@ class ParameterStudy:
 
         for index, row in self.df.iterrows():
             T, P, X = row["T"], row["P"], row["X"]
-            print("{}/{} | T = {:.1f} K, P = {:.2f} bar, [{}]".format(index + 1, len(self.df.index), T, P / 1e5, X))
+            print("{}/{} | T = {:.0f} K, P = {:.1f} bar, {{{}}}".format(index + 1, len(self.df.index), T, P / 1e5, X))
 
-            gas = ct.Solution(self.mechanism)
-            gas.TPX = T, P, X
-            model = ShockTubeReactorModel(gas)
+            self.gas.TPX = T, P, X
+            model = ShockTubeReactorModel(self.gas)
             model.run(duration)
 
             IDT.append(model.IDT_max_pressure_rise())
@@ -257,5 +255,5 @@ class ParameterStudy:
         data = self.df.loc[(self.df["P"] == P) & (self.df["X"] == X)]
 
         plt.figure()
-        plt.scatter(*zip(*[(row["T"], row["IDT"]) for index, row in data.iterrows()]))
+        plt.scatter(data["T"], data["IDT"])
         plt.show()
