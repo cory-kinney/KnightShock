@@ -1,234 +1,36 @@
 """Shock tube gas dynamics equations and solvers"""
 
-import numpy as np
-import cantera as ct
 from scipy import optimize
+from typing import Tuple
+import cantera as ct
+import numpy as np
 
 
-def normal_shock_pressure_ratio(M, gamma):
-    """Calculates the pressure ratio across a normal shock under ideal shock assumptions
-
-    $$ \\frac {P_2} {P_1} = \\frac {2 \\gamma M^2-(\\gamma - 1)} {\\gamma + 1} $$
-
-    Parameters
-    ----------
-    M : float
-        Mach number
-    gamma : float
-        specific heat ratio
-
-    Returns
-    -------
-    float
-
-    Raises
-    ------
-    ValueError
-        `M` is less than one
-
-    """
-
-    if M < 1:
-        raise ValueError("M must be greater than or equal to one")
-
-    return (2 * gamma * M ** 2 - (gamma - 1)) / (gamma + 1)
-
-
-def normal_shock_temperature_ratio(M, gamma):
-    """Calculates the temperature ratio across a normal shock under ideal shock assumptions
-
-    $$ \\frac {T_2} {T_1} = \\frac {\\left(\\gamma M^2 - \\frac {\\gamma - 1} {2}\\right)
-    \\left(\\frac{\\gamma - 1}{2} M^2 + 1\\right)} {\\left(\\frac {\\gamma + 1} {2}\\right)^2 M^2} $$
+def frozen_shock_conditions(M: float, gas: ct.ThermoPhase, method: str = None, *, max_iter: int = 1000,
+                            epsilon: float = 1e-6) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    """Calculates the region 2 and region 5 conditions using the FROzen SHock (FROSH) algorithm. The two-dimensional
+    iterative Newton-Raphson solver for the Rankine-Hugoniot relations is derived by Campbell et al.[^1].
 
     Parameters
     ----------
-    M : float
-        Mach number
-    gamma : float
-        specific heat ratio
-
-    Returns
-    -------
-    float
-
-    Raises
-    ------
-    ValueError
-        `M` is less than one
-
-    """
-
-    if M < 1:
-        raise ValueError("M must be greater than or equal to one")
-
-    return ((gamma * M ** 2 - (gamma - 1) / 2) * ((gamma - 1) / 2 * M ** 2 + 1)) / (((gamma + 1) / 2) ** 2 * M ** 2)
-
-
-def reflected_shock_Mach_number(M, gamma):
-    """Calculates the reflected shock Mach number under ideal assumptions
-
-    $$ \\frac {M_r} {M_r^2 - 1} = \\frac {M_s} {M_s^2 - 1} \\sqrt {1 + \\frac {2 \\left(\\gamma - 1 \\right)}
-    {\\left(\\gamma + 1 \\right)^2} \\left(M_s^2 - 1 \\right) \\left(\\gamma + \\frac {1} {M_s^2} \\right)} $$
-
-    Parameters
-    ----------
-    M : float
+    M
         incident shock Mach number
-    gamma : float
-        specific heat ratio
+    gas
+        driven gas at initial conditions
+    method
+        method used for thermodynamic property calculation assumptions
+        - 'FF' (Frozen-Frozen)
+        - 'FE' (Frozen-Equilibrium)
+        - 'EE' (Equilibrium-Equilibrium)
+    max_iter
+        maximum number of iterations for region conditions iterative solvers
+    epsilon
+        relative error convergence criteria for region conditions iterative solvers
 
     Returns
     -------
-    float
-        reflected shock Mach number
-
-    Raises
-    ------
-    ValueError
-        `M` is not greater than one
-
-    """
-
-    if not M > 1:
-        raise ValueError("M must be greater than one")
-
-    a = M / (M ** 2 - 1) * (1 + 2 * (gamma - 1) / (gamma + 1) ** 2 * (M ** 2 - 1) * (gamma + 1 / M ** 2)) ** 0.5
-
-    return (1 + (1 + 4 * a ** 2) ** 0.5) / a / 2
-
-
-def T2_ideal(T1, M, gamma):
-    """Calculates the ideal post-incident-shock temperature using
-    `knightshock.gas_dynamics.normal_shock_temperature_ratio`.
-
-    Parameters
-    ----------
-    T1 : float
-        initial temperature
-    M : float
-        incident shock Mach number
-    gamma : float
-        specific heat ratio
-
-    Returns
-    -------
-    T2 : float
-        ideal post-incident-shock temperature
-
-    """
-    return T1 * normal_shock_temperature_ratio(M, gamma)
-
-
-def P2_ideal(P1, M, gamma):
-    """Calculates the ideal post-incident-shock pressure using `knightshock.gas_dynamics.normal_shock_pressure_ratio`.
-
-    Parameters
-    ----------
-    P1 : float
-        initial pressure
-    M : float
-        incident shock Mach number
-    gamma : float
-        specific heat ratio
-
-    Returns
-    -------
-    P2 : float
-        ideal post-incident-shock pressure
-
-    """
-    return P1 * normal_shock_pressure_ratio(M, gamma)
-
-
-def T5_ideal(T1, M, gamma):
-    """Calculates the ideal post-reflected-shock temperature using
-    `knightshock.gas_dynamics.normal_shock_temperature_ratio` and `knightshock.gas_dynamics.reflected_Mach_number`.
-
-    Parameters
-    ----------
-    T1 : float
-        initial temperature
-    M : float
-        incident shock Mach number
-    gamma : float
-        specific heat ratio
-
-    Returns
-    -------
-    T5 : float
-        ideal post-reflected-shock temperature
-
-    """
-    return T2_ideal(T1, M, gamma) * normal_shock_temperature_ratio(reflected_shock_Mach_number(M, gamma), gamma)
-
-
-def P5_ideal(P1, M, gamma):
-    """Calculates the ideal post-reflected-shock pressure using `knightshock.gas_dynamics.normal_shock_pressure_ratio`
-    and `knightshock.gas_dynamics.reflected_Mach_number`.
-
-    Parameters
-    ----------
-    P1 : float
-        initial pressure
-    M : float
-        incident shock Mach number
-    gamma : float
-        specific heat ratio
-
-    Returns
-    -------
-    P5 : float
-        ideal post-reflected-shock pressure
-
-    """
-    return P2_ideal(P1, M, gamma) * normal_shock_pressure_ratio(reflected_shock_Mach_number(M, gamma), gamma)
-
-
-def shock_conditions_FROSH(T1, P1, M, *, thermo, max_iter=1000, convergence_criteria=1e-6):
-    """Implementation of the FROzen SHock (FROSH) algorithm for calculating post-incident-shock and post-reflected-shock
-    conditions from initial conditions and shock velocity. The two-dimensional iterative Newton-Raphson algorithm
-    implemented for solving the Rankine-Hugoniot relations is derived by Campbell et al.[^1]. Uses
-    `knightshock.gas_dynamics.T2_ideal` and `knightshock.gas_dynamics.P2_ideal` as initial guesses for algorithm
-    stability.
-
-    Parameters
-    ----------
-    T1 : float
-        initial temperature [K]
-    P1 : float
-        initial pressure [Pa]
-    M : float
-        incident shock Mach number
-    thermo : `cantera.ThermoPhase`
-        thermodynamic properties for driven mixture
-    max_iter : int, optional
-        maximum number of iterations for solvers
-    convergence_criteria : float, optional
-        maximum absolute difference between iterations for convergence
-
-    Returns
-    -------
-    T2 : float
-        post-incident-shock temperature [K]
-    P2 : float
-        post-incident-shock pressure [Pa]
-    T5 : float
-        post-reflected-shock temperature [K]
-    P5 : float
-        post-reflected-shock pressure [Pa]
-
-    Raises
-    ------
-    ValueError
-        `T1` is not greater than zero
-    ValueError
-        `P1` is not greater than zero
-    ValueError
-        `M` is not greater than zero
-    ValueError
-        Incident shock Mach number is not greater than one
-    RuntimeError
-        Convergence criteria is not met within the maximum number of iterations
+    shock_conditions:
+        T2, P2, T5, P5
 
     References
     ----------
@@ -238,147 +40,168 @@ def shock_conditions_FROSH(T1, P1, M, *, thermo, max_iter=1000, convergence_crit
 
     """
 
-    if not T1 > 0:
-        raise ValueError("T1 must be positive")
-    if not P1 > 0:
-        raise ValueError("P1 must be positive")
-    if not M > 1:
-        raise ValueError("M must be greater than 1")
+    method = 'EE' if method is None else method
+    if method not in {"FF", "FE", "EE"}:
+        raise ValueError("Invalid method - valid options are \'FF\', \'FE\', and \'EE\'")
 
-    # Get relevant properties for mixture at T1 and P1
-    thermo.TP = T1, P1
+    R = ct.gas_constant / gas.mean_molecular_weight
 
-    gamma1 = thermo.cp_mass / thermo.cv_mass
-    a1 = (ct.gas_constant / thermo.mean_molecular_weight * gamma1 * T1) ** 0.5  # [m/s]
-    v1 = 1 / thermo.density_mass  # [m^3/kg]
-    h1 = thermo.enthalpy_mass  # [J/kg]
+    # Get properties of mixture at region 1 conditions
+    T1, P1 = gas.TP
 
-    # Calculates ideal P2 and T2 for initial guesses
-    u = a1 * M  # [m/s]
+    h1 = gas.enthalpy_mass
+    cp1 = gas.cp_mass
+    gamma1 = cp1 / (cp1 - R)
+    u1 = M * (R * gamma1 * T1) ** 0.5
+    v1 = R * T1 / P1
 
-    T2_guess = T2 = T2_ideal(T1, M, gamma1)  # [K]
-    P2_guess = P2 = P2_ideal(P1, M, gamma1)  # [Pa]
+    # Define functions for frozen enthalpy computation
+    _linear_polyatomic_molecules = frozenset({
+        "BeCl2", "C3", "CCN", "CCO", "CH2", "CNC", "CNN", "CO2", "F2Xe", "HCC", "HCN", "N2O",
+        "N3", "NCN", "NCO", "OCS", "C2H2", "C2N2", "CCCC", "HCCCl", "C3H2", "C3N2", "C3O2"
+    })
 
-    # Iterate to find P2 and T2
+    def rotational_DOF(species):
+        """Gets the number of rotational degrees of freedom of a species molecule using Tables 6 and 7 in
+        reference [^1]"""
+        if species in _linear_polyatomic_molecules:
+            return 2
+        else:
+            num_atoms = sum(gas.species(species).composition.values())
+            if num_atoms == 1:
+                return 0
+            elif num_atoms == 2:
+                return 2
+            else:
+                return 3
+
+    translational_rotational_energy = np.sum(np.array([x * (5 + rotational_DOF(species)) / 2
+                                                       for species, x in gas.mole_fraction_dict().items()]))
+
+    def h_frozen(T):
+        """Calculates the vibrationally frozen enthalpy of the mixture"""
+        return h1 + R * (T - T1) * translational_rotational_energy
+
+    # Calculate initial guess for region 2 conditions from ideal shock equations
+    T2_guess = T1 * ((gamma1 * M ** 2 - (gamma1 - 1) / 2) * ((gamma1 - 1) / 2 * M ** 2 + 1)) \
+               / (((gamma1 + 1) / 2) ** 2 * M ** 2)
+    P2_guess = P1 * (2 * gamma1 * M ** 2 - (gamma1 - 1)) / (gamma1 + 1)
+
     for i in range(max_iter):
-        thermo.TP = T2_guess, P2_guess
+        # Get properties of mixture at guessed region 2 conditions
+        gas.TP = T2_guess, P2_guess
 
-        # Get relevant properties for the mixture at the guessed P2 and T2 values
-        v2 = 1 / thermo.density_mass  # [m^3/kg]
-        h2 = thermo.enthalpy_mass  # [J/kg]
-        cp2 = thermo.cp_mass  # [J/kg/K]
+        h2 = gas.enthalpy_mass if method[0] == 'E' else h_frozen(T2_guess)
+        cp2 = gas.cp_mass if method[0] == 'E' else cp1
+        v2 = R * T2_guess / P2_guess
 
-        # Evaluate functions
-        f1 = (P2_guess / P1 - 1) + (u ** 2 / (P1 * v1)) * (v2 / v1 - 1)
-        f2 = ((h2 - h1) / (1 / 2 * u ** 2)) + (v2 ** 2 / v1 ** 2 - 1)
+        # Calculate iterative solver terms
+        f1 = (P2_guess / P1 - 1) + (u1 ** 2 / (P1 * v1)) * (v2 / v1 - 1)
+        f2 = ((h2 - h1) / (1 / 2 * u1 ** 2)) + (v2 ** 2 / v1 ** 2 - 1)
 
-        df1_dP2_T2 = (1 / P1) + (u ** 2 / (P1 * v1 ** 2)) * (-v2 / P2_guess)
-        df1_dT2_P2 = (u ** 2 / (P1 * v1 ** 2)) * (v2 / T2_guess)
+        df1_dP2_T2 = (1 / P1) + (u1 ** 2 / (P1 * v1 ** 2)) * (-v2 / P2_guess)
+        df1_dT2_P2 = (u1 ** 2 / (P1 * v1 ** 2)) * (v2 / T2_guess)
         df2_dP2_T2 = (2 * v2 / v1 ** 2) * (-v2 / P2_guess)
-        df2_dT2_P2 = (2 / u ** 2) * cp2 + (2 * v2 / v1 ** 2) * (v2 / T2_guess)
+        df2_dT2_P2 = (2 / u1 ** 2) * cp2 + (2 * v2 / v1 ** 2) * (v2 / T2_guess)
 
+        # Calculate next iteration for region 2 conditions
         T2, P2 = tuple((np.array([[T2_guess], [P2_guess]])
                         - np.matmul(np.linalg.inv(np.array([[df1_dT2_P2, df1_dP2_T2], [df2_dT2_P2, df2_dP2_T2]])),
                                     np.array([[f1], [f2]]))).T[0])
 
-        # Break the loop when convergence criteria is met
-        if abs(T2 - T2_guess) / T2_guess < convergence_criteria and \
-                abs(P2 - P2_guess) / P2_guess < convergence_criteria:
+        # Check for convergence and maximum iteration conditions
+        if abs(T2 - T2_guess) / T2_guess < epsilon and abs(P2 - P2_guess) / P2_guess < epsilon:
             break
-
-        # Update the P2 and T2 guesses
-        T2_guess = T2
-        P2_guess = P2
-
-        # Raise an error if the maximum number of iterations has been reached
-        if i == max_iter - 1:
+        elif i == max_iter - 1:
             raise RuntimeError("Convergence criteria not met within the maximum number of iterations")
+        else:
+            T2_guess = T2
+            P2_guess = P2
 
-    # Get relevant properties for mixture at T2 and P2
-    thermo.TP = T2, P2
+    # Get properties of mixture at solved region 2 conditions
+    gas.TP = T2, P2
 
-    gamma2 = thermo.cp_mass / thermo.cv_mass
-    v2 = 1 / thermo.density_mass  # [m^3/kg]
-    h2 = thermo.enthalpy_mass  # [J/kg]
+    h2 = gas.enthalpy_mass if method[0] == 'E' else h_frozen(T2)
+    cp2 = gas.cp_mass if method[0] == 'E' else cp1
+    v2 = R * T2 / P2
+    gamma2 = cp2 / (cp2 - R)
+    u2 = u1 * v2 / v1
 
-    # Calculate u2 using continuity
-    u2 = u * v2 / v1  # [m/s]
+    # Calculate initial guess for region 5 conditions from ideal shock equations
+    P5_guess = P2 * ((gamma2 + 1) / (gamma2 - 1) + 2 - P1 / P2) / (1 + (gamma2 + 1) / (gamma2 - 1) * P1 / P2)
+    T5_guess = T2 * (P5_guess / P2) * ((gamma2 + 1) / (gamma2 - 1) + P5_guess / P2) \
+               / (1 + (gamma2 + 1) / (gamma2 - 1) * P5_guess / P2)
 
-    # Calculates ideal P5 and T5 for initial guesses
-    P5 = P2 * ((gamma2 + 1) / (gamma2 - 1) + 2 - P1 / P2) / (1 + (gamma2 + 1) / (gamma2 - 1) * P1 / P2)  # [Pa]
-    T5 = T2 * (P5 / P2) * ((gamma2 + 1) / (gamma2 - 1) + P5 / P2) / (1 + (gamma2 + 1) / (gamma2 - 1) * P5 / P2)  # [K]
-
-    T5_guess = T5
-    P5_guess = P5
-
-    # Iterate to find P5 and T5
     for i in range(max_iter):
-        # Get relevant properties for the mixture at the guessed P5 and T5 values
-        thermo.TP = T5_guess, P5_guess
+        # Get properties of mixture at guessed region 5 conditions
+        gas.TP = T5_guess, P5_guess
+        h5 = gas.enthalpy_mass if method[1] == 'E' else h_frozen(T5_guess)
+        cp5 = gas.cp_mass if method[1] == 'E' else cp1
+        v5 = R * T5_guess / P5_guess
 
-        v5 = 1 / thermo.density_mass  # [m^3/kg]
-        h5 = thermo.enthalpy_mass  # [J/kg]
-        cp5 = thermo.cp_mass  # [J/kg/K]
+        # Calculate iterative solver terms
+        f3 = (P5_guess / P2 - 1) + ((u1 - u2) ** 2 / (P2 * (v5 - v2)))
+        f4 = ((h5 - h2) / (1 / 2 * (u1 - u2) ** 2)) + ((v5 + v2) / (v5 - v2))
 
-        # Evaluate functions
-        f3 = (P5_guess / P2 - 1) + ((u - u2) ** 2 / (P2 * (v5 - v2)))
-        f4 = ((h5 - h2) / (1 / 2 * (u - u2) ** 2)) + ((v5 + v2) / (v5 - v2))
-
-        df3_dP5_T5 = (1 / P2) + (-(u - u2) ** 2 / (P2 * (v5 - v2) ** 2)) * (-v5 / P5_guess)
-        df3_dT5_P5 = (-(u - u2) ** 2 / (P2 * (v5 - v2) ** 2)) * (v5 / T5_guess)
+        df3_dP5_T5 = (1 / P2) + (-(u1 - u2) ** 2 / (P2 * (v5 - v2) ** 2)) * (-v5 / P5_guess)
+        df3_dT5_P5 = (-(u1 - u2) ** 2 / (P2 * (v5 - v2) ** 2)) * (v5 / T5_guess)
         df4_dP5_T5 = (-2 * v2 / (v5 - v2) ** 2) * (-v5 / P5_guess)
-        df4_dT5_P5 = (1 / (1 / 2 * (u - u2) ** 2)) * cp5 + (-2 * v2 / (v5 - v2) ** 2) * (v5 / T5_guess)
+        df4_dT5_P5 = (1 / (1 / 2 * (u1 - u2) ** 2)) * cp5 + (-2 * v2 / (v5 - v2) ** 2) * (v5 / T5_guess)
 
+        # Calculate next iteration for region 5 conditions
         T5, P5 = tuple((np.array([[T5_guess], [P5_guess]])
                         - np.matmul(np.linalg.inv(np.array([[df3_dT5_P5, df3_dP5_T5], [df4_dT5_P5, df4_dP5_T5]])),
                                     np.array([[f3], [f4]]))).T[0])
 
-        # Break the loop when convergence criteria is met
-        if abs(T5 - T5_guess) / T5_guess < convergence_criteria and \
-                abs(P5 - P5_guess) / P5_guess < convergence_criteria:
+        # Check for convergence and maximum iteration conditions
+        if abs(T5 - T5_guess) / T5_guess < epsilon and abs(P5 - P5_guess) / P5_guess < epsilon:
             break
-
-        # Update the P5 and T5 guesses
-        T5_guess = T5
-        P5_guess = P5
-
-        # Raise an error if the maximum number of iterations has been reached
-        if i == max_iter - 1:
+        elif i == max_iter - 1:
             raise RuntimeError("Convergence criteria not met within the maximum number of iterations")
+        else:
+            T5_guess = T5
+            P5_guess = P5
 
-    return T2, P2, T5, P5
+    # Reset object to region 1 conditions
+    gas.TP = T1, P1
+
+    return (T2, P2), (T5, P5)
 
 
-def shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4, *, area_ratio=1):
+def shock_tube_flow_properties(M: float, T1: float, T4: float, MW1: float, MW4: float, gamma1: float, gamma4: float,
+                               *, area_ratio: float = 1) -> Tuple[float, float, float, float]:
     """Calculates the characteristics associated with the formation of an ideal incident shock for a shock tube flow
     with monotonic convergence at the diaphragm section. The equations derived by Alpher and White[^1] were optimized
     for use with `scipy.optimize.root_scalar`.
 
     Parameters
     ----------
-    M : float
+    M
         incident shock Mach number
-    T1 : float
+    T1
         absolute temperature of driven gas
-    T4 : float
+    T4
         absolute temperature of driver gas
-    MW1 : float
+    MW1
         mean molecular weight of driven gas
-    MW4 : float
+    MW4
         mean molecular weight of driver gas
-    gamma1 : float
+    gamma1
         specific heat ratio of driven gas
-    gamma4 : float
+    gamma4
         specific heat ratio of driver gas
-    area_ratio : float, optional
+    area_ratio
         ratio of driver to driven area
 
     Returns
     -------
-    P4_P1, M3a, Me, M3 : float, float, float, float
+    P4_P1
         ratio of driver to driven initial pressures
+    M3a
         Mach number of flow before nozzle
+    Me
         Mach number of flow at nozzle exit
+    M3
         Mach number of fully expanded driver flow
 
     Raises
@@ -404,7 +227,7 @@ def shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4, *, area_rati
 
     a1_u2 = (gamma1 + 1) / 2 * M / (M ** 2 - 1)
     a4_a1 = (gamma4 / gamma1 * MW1 / MW4 * T4 / T1) ** 0.5
-    P2_P1 = normal_shock_pressure_ratio(M, gamma1)
+    P2_P1 = (2 * gamma1 * M ** 2 - (gamma1 - 1)) / (gamma1 + 1)
 
     def equivalence_factor(_M3a, _Me):
         return (((2 + (gamma4 - 1) * _M3a ** 2) / (2 + (gamma4 - 1) * _Me ** 2)) ** 0.5
@@ -442,7 +265,8 @@ def shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4, *, area_rati
     return P4_P1, M3a, Me, M3
 
 
-def tailored_mixture(M, T1, T4, MW1, MW4, gamma1, gamma4, *, area_ratio=1):
+def tailored_mixture(M: float, T1: float, T4: float, MW1: float, MW4: Tuple[float, float], gamma1: float,
+                     gamma4: Tuple[float, float], *, area_ratio: float = 1) -> Tuple[float, float]:
     """Calculates the species mole fractions that tailor the interaction between the reflected shock wave and the
     contact surface. The mole fractions for which the output of
     `knightshock.gas_dynamics.shock_tube_flow_properties` satisfies the tailoring condition described by Hong et al.[^1]
@@ -450,21 +274,21 @@ def tailored_mixture(M, T1, T4, MW1, MW4, gamma1, gamma4, *, area_ratio=1):
 
     Parameters
     ----------
-    M : float
+    M
         incident shock Mach number
-    T1 : float
+    T1
         absolute temperature of driven gas
-    T4 : float
+    T4
         absolute temperature of driver gas
-    MW1 : float
+    MW1
         mean molecular weight of driven gas
-    MW4 : tuple
+    MW4
         mean molecular weights of driver species used for tailoring
-    gamma1 : float
+    gamma1
         specific heat ratio of driven gas
-    gamma4 : tuple
+    gamma4
         specific heat ratios of driver species used for tailoring
-    area_ratio : float
+    area_ratio
         ratio of driver to driven area
 
     Returns
@@ -517,4 +341,3 @@ def tailored_mixture(M, T1, T4, MW1, MW4, gamma1, gamma4, *, area_ratio=1):
     x1 = 1 - x0
 
     return x0, x1
-
