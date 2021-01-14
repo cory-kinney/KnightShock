@@ -1,12 +1,16 @@
 """Shock tube experiment planning and data analysis package"""
 
-from knightshock.gas_dynamics import frozen_shock_conditions
+from knightshock.gas_dynamics import *
+from knightshock.kinetics import *
+from dataclasses import dataclass
+
 from typing import Dict, List, Union
 from tabulate import tabulate
 import cantera as ct
 import numpy as np
 
 
+@dataclass(frozen=True)
 class State:
     """Base class encapsulating the state of the shock tube regions"""
 
@@ -53,19 +57,33 @@ class State:
         def a(self):
             return (self.gamma * ct.gas_constant / self.MW * self.T) ** 0.5
 
-    def __init__(self, region1: Region, region2: Dict[str, Region], region4: Region, region5: Dict[str, Region]):
-        self.regions = {1: region1, 2: region2, 4: region4, 5: region5}
+    region1: Region
+    region4: Region
+    region2: Dict[str, Region]
+    region5: Dict[str, Region]
+
+    def __getitem__(self, region_num):
+        if region_num == 1:
+            return self.region1
+        elif region_num == 2:
+            return self.region2
+        elif region_num == 4:
+            return self.region4
+        elif region_num == 5:
+            return self.region5
+        else:
+            raise KeyError("Invalid region number")
 
     def __str__(self):
         initial_conditions_table = tabulate(
-            [[region, self.regions[region].T, self.regions[region].P / 1e5] for region in [1, 4]],
+            [[region, self[region].T, self[region].P / 1e5] for region in [1, 4]],
             headers=['Region', 'T [K]', 'P [bar]'])
 
         shock_conditions_table = tabulate(
-            [['T2 [K]', self.regions[2]['FF'].T, self.regions[2]['FE'].T, self.regions[2]['EE'].T],
-             ['P2 [bar]', self.regions[2]['FF'].P / 1e5, self.regions[2]['FE'].P / 1e5, self.regions[2]['EE'].P / 1e5],
-             ['T5 [K]', self.regions[5]['FF'].T, self.regions[5]['FE'].T, self.regions[5]['EE'].T],
-             ['P5 [bar]', self.regions[5]['FF'].P / 1e5, self.regions[5]['FE'].P / 1e5, self.regions[5]['EE'].P / 1e5]],
+            [['T2 [K]', self[2]['FF'].T, self[2]['FE'].T, self[2]['EE'].T],
+             ['P2 [bar]', self[2]['FF'].P / 1e5, self[2]['FE'].P / 1e5, self[2]['EE'].P / 1e5],
+             ['T5 [K]', self[5]['FF'].T, self[5]['FE'].T, self[5]['EE'].T],
+             ['P5 [bar]', self[5]['FF'].P / 1e5, self[5]['FE'].P / 1e5, self[5]['EE'].P / 1e5]],
             headers=['', 'FF', 'FE', 'EE'])
 
         return "Initial Conditions\n\n{}\n\nShock Conditions\n\n{}"\
@@ -76,8 +94,8 @@ class State:
         solution = ct.Solution(mechanism)
 
         region1 = State.Region(T1, P1, X1, solution)
-        region2 = {}
         region4 = State.Region(T4, P4, X4, solution)
+        region2 = {}
         region5 = {}
 
         for method in ['FF', 'FE', 'EE']:
@@ -85,12 +103,17 @@ class State:
             region2[method] = State.Region(T2, P2, X1, solution)
             region5[method] = State.Region(T5, P5, X1, solution)
 
-        return cls(region1, region2, region4, region5)
+        return cls(region1, region4, region2, region5)
 
 
 class Experiment:
-    def __init__(self):
-        pass
+    def __init__(self, mechanism):
+        self.gas = ct.Solution(mechanism)
+        self.state = None
+
+        self.u = None
+        self.attenuation = None
+        self.r2 = None
 
     @staticmethod
     def shock_velocity_TOF(x, dt):
