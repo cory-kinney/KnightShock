@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.1" />
+<title>knightshock.gasdynamics API documentation</title>
+<meta name="description" content="Shock tube gas dynamics equations and solvers" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>knightshock.gasdynamics</code></h1>
+</header>
+<section id="section-intro">
+<p>Shock tube gas dynamics equations and solvers</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;Shock tube gas dynamics equations and solvers&#34;&#34;&#34;
+
+from scipy import optimize
+from typing import Tuple
+import cantera as ct
+import numpy as np
+
+
+def frozen_shock_conditions(M: float, gas: ct.ThermoPhase, method: str = None, *, max_iter: int = 1000,
+                            epsilon: float = 1e-6) -&gt; Tuple[Tuple[float, float], Tuple[float, float]]:
+    &#34;&#34;&#34;Calculates the region 2 and region 5 conditions using the FROzen SHock (FROSH) algorithm. The two-dimensional
+    iterative Newton-Raphson solver for the Rankine-Hugoniot relations is derived by Campbell et al.[^1].
+
+    Parameters
+    ----------
+    M: float
+        incident shock Mach number
+    gas: cantera.ThermoPhase
+        driven gas at initial conditions
+    method: str, optional
+        method used for thermodynamic property calculation assumptions
+
+        - &#39;FF&#39; (Frozen-Frozen)
+
+        - &#39;FE&#39; (Frozen-Equilibrium)
+
+        - &#39;EE&#39; (Equilibrium-Equilibrium), default
+
+    max_iter: int, optional
+        maximum number of iterations for region conditions iterative solvers
+    epsilon: float, optional
+        relative error convergence criteria for region conditions iterative solvers
+
+    Returns
+    -------
+    T2: float
+        temperature in region 2 (K)
+    P2: float
+        pressure in region 2 (Pa)
+    T5: float
+        temperature in region 5 (K)
+    P5: float
+        pressure in region 5 (Pa)
+
+    References
+    ----------
+    [^1]: Campbell, Owen, Davidson, Hanson: Dependence of Calculated Postshock Thermodynamic Variables on Vibrational
+    Equilibrium and Input Uncertainty. AIAA Journal of Thermophysics and Heat Transfer 31, 586-608 (2017).
+    https://doi.org/10.2514/1.T4952
+
+    &#34;&#34;&#34;
+
+    method = &#39;EE&#39; if method is None else method
+    if method not in {&#34;FF&#34;, &#34;FE&#34;, &#34;EE&#34;}:
+        raise ValueError(&#34;Invalid method - valid options are \&#39;FF\&#39;, \&#39;FE\&#39;, and \&#39;EE\&#39;&#34;)
+
+    R = ct.gas_constant / gas.mean_molecular_weight
+
+    # Get properties of mixture at region 1 conditions
+    T1, P1 = gas.TP
+
+    h1 = gas.enthalpy_mass
+    cp1 = gas.cp_mass
+    gamma1 = cp1 / (cp1 - R)
+    u1 = M * (R * gamma1 * T1) ** 0.5
+    v1 = R * T1 / P1
+
+    # Define functions for frozen enthalpy computation
+    _linear_polyatomic_molecules = frozenset({
+        &#34;BeCl2&#34;, &#34;C3&#34;, &#34;CCN&#34;, &#34;CCO&#34;, &#34;CH2&#34;, &#34;CNC&#34;, &#34;CNN&#34;, &#34;CO2&#34;, &#34;F2Xe&#34;, &#34;HCC&#34;, &#34;HCN&#34;, &#34;N2O&#34;,
+        &#34;N3&#34;, &#34;NCN&#34;, &#34;NCO&#34;, &#34;OCS&#34;, &#34;C2H2&#34;, &#34;C2N2&#34;, &#34;CCCC&#34;, &#34;HCCCl&#34;, &#34;C3H2&#34;, &#34;C3N2&#34;, &#34;C3O2&#34;
+    })
+
+    def rotational_DOF(species: str) -&gt; int:
+        &#34;&#34;&#34;Gets the number of rotational degrees of freedom of a species molecule using Tables 6 and 7 in
+        reference [^1]&#34;&#34;&#34;
+        if species in _linear_polyatomic_molecules:
+            return 2
+        else:
+            num_atoms = sum(gas.species(species).composition.values())
+            if num_atoms == 1:
+                return 0
+            elif num_atoms == 2:
+                return 2
+            else:
+                return 3
+
+    translational_rotational_energy = np.sum(np.array([x * (5 + rotational_DOF(species)) / 2
+                                                       for species, x in gas.mole_fraction_dict().items()]))
+
+    def h_frozen(T: float) -&gt; float:
+        &#34;&#34;&#34;Calculates the vibrationally frozen enthalpy of the mixture&#34;&#34;&#34;
+        return h1 + R * (T - T1) * translational_rotational_energy
+
+    # Calculate initial guess for region 2 conditions from ideal shock equations
+    T2_guess = T1 * ((gamma1 * M ** 2 - (gamma1 - 1) / 2) * ((gamma1 - 1) / 2 * M ** 2 + 1)) \
+               / (((gamma1 + 1) / 2) ** 2 * M ** 2)
+    P2_guess = P1 * (2 * gamma1 * M ** 2 - (gamma1 - 1)) / (gamma1 + 1)
+
+    for i in range(max_iter):
+        # Get properties of mixture at guessed region 2 conditions
+        gas.TP = T2_guess, P2_guess
+
+        h2 = gas.enthalpy_mass if method[0] == &#39;E&#39; else h_frozen(T2_guess)
+        cp2 = gas.cp_mass if method[0] == &#39;E&#39; else cp1
+        v2 = R * T2_guess / P2_guess
+
+        # Calculate iterative solver terms
+        f1 = (P2_guess / P1 - 1) + (u1 ** 2 / (P1 * v1)) * (v2 / v1 - 1)
+        f2 = ((h2 - h1) / (1 / 2 * u1 ** 2)) + (v2 ** 2 / v1 ** 2 - 1)
+
+        df1_dP2_T2 = (1 / P1) + (u1 ** 2 / (P1 * v1 ** 2)) * (-v2 / P2_guess)
+        df1_dT2_P2 = (u1 ** 2 / (P1 * v1 ** 2)) * (v2 / T2_guess)
+        df2_dP2_T2 = (2 * v2 / v1 ** 2) * (-v2 / P2_guess)
+        df2_dT2_P2 = (2 / u1 ** 2) * cp2 + (2 * v2 / v1 ** 2) * (v2 / T2_guess)
+
+        # Calculate next iteration for region 2 conditions
+        T2, P2 = tuple((np.array([[T2_guess], [P2_guess]])
+                        - np.matmul(np.linalg.inv(np.array([[df1_dT2_P2, df1_dP2_T2], [df2_dT2_P2, df2_dP2_T2]])),
+                                    np.array([[f1], [f2]]))).T[0])
+
+        # Check for convergence and maximum iteration conditions
+        if abs(T2 - T2_guess) / T2_guess &lt; epsilon and abs(P2 - P2_guess) / P2_guess &lt; epsilon:
+            break
+        elif i == max_iter - 1:
+            raise RuntimeError(&#34;Convergence criteria not met within the maximum number of iterations&#34;)
+        else:
+            T2_guess = T2
+            P2_guess = P2
+
+    # Get properties of mixture at solved region 2 conditions
+    gas.TP = T2, P2
+
+    h2 = gas.enthalpy_mass if method[0] == &#39;E&#39; else h_frozen(T2)
+    cp2 = gas.cp_mass if method[0] == &#39;E&#39; else cp1
+    v2 = R * T2 / P2
+    gamma2 = cp2 / (cp2 - R)
+    u2 = u1 * v2 / v1
+
+    # Calculate initial guess for region 5 conditions from ideal shock equations
+    P5_guess = P2 * ((gamma2 + 1) / (gamma2 - 1) + 2 - P1 / P2) / (1 + (gamma2 + 1) / (gamma2 - 1) * P1 / P2)
+    T5_guess = T2 * (P5_guess / P2) * ((gamma2 + 1) / (gamma2 - 1) + P5_guess / P2) \
+               / (1 + (gamma2 + 1) / (gamma2 - 1) * P5_guess / P2)
+
+    for i in range(max_iter):
+        # Get properties of mixture at guessed region 5 conditions
+        gas.TP = T5_guess, P5_guess
+        h5 = gas.enthalpy_mass if method[1] == &#39;E&#39; else h_frozen(T5_guess)
+        cp5 = gas.cp_mass if method[1] == &#39;E&#39; else cp1
+        v5 = R * T5_guess / P5_guess
+
+        # Calculate iterative solver terms
+        f3 = (P5_guess / P2 - 1) + ((u1 - u2) ** 2 / (P2 * (v5 - v2)))
+        f4 = ((h5 - h2) / (1 / 2 * (u1 - u2) ** 2)) + ((v5 + v2) / (v5 - v2))
+
+        df3_dP5_T5 = (1 / P2) + (-(u1 - u2) ** 2 / (P2 * (v5 - v2) ** 2)) * (-v5 / P5_guess)
+        df3_dT5_P5 = (-(u1 - u2) ** 2 / (P2 * (v5 - v2) ** 2)) * (v5 / T5_guess)
+        df4_dP5_T5 = (-2 * v2 / (v5 - v2) ** 2) * (-v5 / P5_guess)
+        df4_dT5_P5 = (1 / (1 / 2 * (u1 - u2) ** 2)) * cp5 + (-2 * v2 / (v5 - v2) ** 2) * (v5 / T5_guess)
+
+        # Calculate next iteration for region 5 conditions
+        T5, P5 = tuple((np.array([[T5_guess], [P5_guess]])
+                        - np.matmul(np.linalg.inv(np.array([[df3_dT5_P5, df3_dP5_T5], [df4_dT5_P5, df4_dP5_T5]])),
+                                    np.array([[f3], [f4]]))).T[0])
+
+        # Check for convergence and maximum iteration conditions
+        if abs(T5 - T5_guess) / T5_guess &lt; epsilon and abs(P5 - P5_guess) / P5_guess &lt; epsilon:
+            break
+        elif i == max_iter - 1:
+            raise RuntimeError(&#34;Convergence criteria not met within the maximum number of iterations&#34;)
+        else:
+            T5_guess = T5
+            P5_guess = P5
+
+    # Reset object to region 1 conditions
+    gas.TP = T1, P1
+
+    return (T2, P2), (T5, P5)
+
+
+def shock_tube_flow_properties(M: float, T1: float, T4: float, MW1: float, MW4: float, gamma1: float, gamma4: float,
+                               *, area_ratio: float = 1) -&gt; Tuple[float, float, float, float]:
+    &#34;&#34;&#34;Calculates the characteristics associated with the formation of an ideal incident shock for a shock tube flow
+    with monotonic convergence at the diaphragm section. The equations derived by Alpher and White[^1] were optimized
+    for use with `scipy.optimize.root_scalar`.
+
+    Parameters
+    ----------
+    M: float
+        incident shock Mach number
+    T1: float
+        absolute temperature of driven gas
+    T4: float
+        absolute temperature of driver gas
+    MW1: float
+        mean molecular weight of driven gas
+    MW4: float, float
+        mean molecular weight of driver gas
+    gamma1: float
+        specific heat ratio of driven gas
+    gamma4: float, float
+        specific heat ratio of driver gas
+    area_ratio: float, optional
+        ratio of driver to driven area
+
+    Returns
+    -------
+    P4_P1: float
+        ratio of driver to driven initial pressures
+    M3a: float
+        Mach number of flow before nozzle
+    Me: float
+        Mach number of flow at nozzle exit
+    M3: float
+        Mach number of fully expanded driver flow
+
+    References
+    ----------
+    [^1]: Alpher, R., &amp; White, D. (1958). Flow in shock tubes with area change at the diaphragm section. Journal of
+    Fluid Mechanics, 3(5), 457-470. https://doi.org/10.1017/S0022112058000124
+
+    &#34;&#34;&#34;
+
+    if not M &gt; 1:
+        raise ValueError(&#34;M must be greater than one&#34;)
+    if area_ratio &lt; 1:
+        raise ValueError(&#34;Area ratio must be greater than or equal to one&#34;)
+
+    a1_u2 = (gamma1 + 1) / 2 * M / (M ** 2 - 1)
+    a4_a1 = (gamma4 / gamma1 * MW1 / MW4 * T4 / T1) ** 0.5
+    P2_P1 = (2 * gamma1 * M ** 2 - (gamma1 - 1)) / (gamma1 + 1)
+
+    def equivalence_factor(_M3a, _Me):
+        return (((2 + (gamma4 - 1) * _M3a ** 2) / (2 + (gamma4 - 1) * _Me ** 2)) ** 0.5
+                * (2 + (gamma4 - 1) * _Me) / (2 + (gamma4 - 1) * _M3a)) ** (2 * gamma4 / (gamma4 - 1))
+
+    def calc_M3(_M3a, _Me):
+        return 1 / (a1_u2 * a4_a1 * equivalence_factor(_M3a, _Me) ** ((gamma4 - 1) / gamma4 / 2) - (gamma4 - 1) / 2)
+
+    def solve_M3a(_Me):
+        def area_ratio_error(_M3a):
+            return area_ratio * _M3a - _Me * ((2 + (gamma4 - 1) * _M3a ** 2) / (2 + (gamma4 - 1) * _Me ** 2)) \
+                   ** ((gamma4 + 1) / (gamma4 - 1) / 2)
+
+        _root_results = optimize.root_scalar(area_ratio_error, bracket=[0, 1])
+        if not _root_results.converged:
+            raise RuntimeError(&#34;Root finding routine for M3a did not converge&#34;)
+        return _root_results.root
+
+    # Assume supersonic case (Me = 1)
+    Me = 1
+    M3a = solve_M3a(Me)
+    M3 = calc_M3(M3a, Me)
+
+    # Subsonic case (M3 = Me)
+    if M3 &lt; 1:
+        root_results = optimize.root_scalar(lambda _M3: _M3 - calc_M3(solve_M3a(_Me=_M3), _Me=_M3), bracket=[0, 1])
+        if not root_results.converged:
+            raise RuntimeError(&#34;Root finding routine for M3 did not converge&#34;)
+        M3 = root_results.root
+        Me = M3
+        M3a = solve_M3a(Me)
+
+    P4_P1 = P2_P1 / equivalence_factor(M3a, Me) * (1 + (gamma4 - 1) / 2 * M3) ** (2 * gamma4 / (gamma4 - 1))
+
+    return P4_P1, M3a, Me, M3
+
+
+def tailored_mixture(M: float, T1: float, T4: float, MW1: float, MW4: Tuple[float, float], gamma1: float,
+                     gamma4: Tuple[float, float], *, area_ratio: float = 1) -&gt; Tuple[float, float]:
+    &#34;&#34;&#34;Calculates the species mole fractions that tailor the interaction between the reflected shock wave and the
+    contact surface. The mole fractions for which the output of
+    `knightshock.gasdynamics.shock_tube_flow_properties` satisfies the tailoring condition described by Hong et al.[^1]
+    is iteratively calculated using `scipy.optimize.root_scalar`.
+
+    Parameters
+    ----------
+    M: float
+        incident shock Mach number
+    T1: float
+        absolute temperature of driven gas
+    T4: float
+        absolute temperature of driver gas
+    MW1: float
+        mean molecular weight of driven gas
+    MW4: Tuple[float, float]
+        mean molecular weights of driver species used for tailoring
+    gamma1: float
+        specific heat ratio of driven gas
+    gamma4: Tuple[float, float]
+        specific heat ratios of driver species used for tailoring
+    area_ratio:
+        ratio of driver to driven area
+
+    Returns
+    -------
+    x0, x1 : float, float
+        mole fractions of driver species
+
+    Raises
+    ------
+    ValueError
+        Tailoring solution does not exist for the given inputs
+    RuntimeError
+        Root finding routine does not converge
+
+    References
+    ----------
+    [^1]: Hong, Z., Davidson, D.F. &amp; Hanson, R.K. Contact surface tailoring condition for shock tubes with different
+    driver and driven section diameters. Shock Waves 19, 331–336 (2009). https://doi.org/10.1007/s00193-009-0212-z
+
+    &#34;&#34;&#34;
+
+    P5_P2 = (M ** 2 * (3 * gamma1 - 1) - 2 * (gamma1 - 1)) / (M ** 2 * (gamma1 - 1) + 2)
+
+    a0 = gamma4[0] / (gamma4[0] - 1)
+    a1 = gamma4[1] / (gamma4[1] - 1)
+
+    def _M3_error(_x0):
+        _x1 = 1 - _x0
+
+        _MW4 = _x0 * MW4[0] + _x1 * MW4[1]
+        _gamma4 = (_x0 * a0 + _x1 * a1) / (_x0 * a0 + _x1 * a1 - 1)
+
+        _alpha4 = (_gamma4 + 1) / (_gamma4 - 1)
+        _M3_tailored = (_alpha4 - 1) * (P5_P2 - 1) / ((1 + _alpha4) * (1 + _alpha4 * P5_P2)) ** 0.5
+
+        return _M3_tailored - shock_tube_flow_properties(M, T1, T4, MW1, _MW4, gamma1, _gamma4,
+                                                         area_ratio=area_ratio)[3]
+
+    try:
+        root_results = optimize.root_scalar(lambda _x0: _M3_error(_x0), bracket=[0, 1])
+    except ValueError:
+        raise ValueError(&#34;Tailoring solution does not exist for the given inputs&#34;)
+
+    if not root_results.converged:
+        raise RuntimeError(&#34;Root finding routine for species mole fractions did not converge&#34;)
+
+    x0 = root_results.root
+    x1 = 1 - x0
+
+    return x0, x1</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="knightshock.gasdynamics.frozen_shock_conditions"><code class="name flex">
+<span>def <span class="ident">frozen_shock_conditions</span></span>(<span>M: float, gas: cantera._cantera.ThermoPhase, method: str = None, *, max_iter: int = 1000, epsilon: float = 1e-06) ‑> Tuple[Tuple[float, float], Tuple[float, float]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculates the region 2 and region 5 conditions using the FROzen SHock (FROSH) algorithm. The two-dimensional
+iterative Newton-Raphson solver for the Rankine-Hugoniot relations is derived by Campbell et al.<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>M</code></strong> :&ensp;<code>float</code></dt>
+<dd>incident shock Mach number</dd>
+<dt><strong><code>gas</code></strong> :&ensp;<code>cantera.ThermoPhase</code></dt>
+<dd>driven gas at initial conditions</dd>
+<dt><strong><code>method</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>
+<p>method used for thermodynamic property calculation assumptions</p>
+<ul>
+<li>
+<p>'FF' (Frozen-Frozen)</p>
+</li>
+<li>
+<p>'FE' (Frozen-Equilibrium)</p>
+</li>
+<li>
+<p>'EE' (Equilibrium-Equilibrium), default</p>
+</li>
+</ul>
+</dd>
+<dt><strong><code>max_iter</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>maximum number of iterations for region conditions iterative solvers</dd>
+<dt><strong><code>epsilon</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>relative error convergence criteria for region conditions iterative solvers</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>T2</code></strong> :&ensp;<code>float</code></dt>
+<dd>temperature in region 2 (K)</dd>
+<dt><strong><code>P2</code></strong> :&ensp;<code>float</code></dt>
+<dd>pressure in region 2 (Pa)</dd>
+<dt><strong><code>T5</code></strong> :&ensp;<code>float</code></dt>
+<dd>temperature in region 5 (K)</dd>
+<dt><strong><code>P5</code></strong> :&ensp;<code>float</code></dt>
+<dd>pressure in region 5 (Pa)</dd>
+</dl>
+<h2 id="references">References</h2>
+<div class="footnote">
+<hr>
+<ol>
+<li id="fn:1">
+<p>Campbell, Owen, Davidson, Hanson: Dependence of Calculated Postshock Thermodynamic Variables on Vibrational
+Equilibrium and Input Uncertainty. AIAA Journal of Thermophysics and Heat Transfer 31, 586-608 (2017).
+<a href="https://doi.org/10.2514/1.T4952">https://doi.org/10.2514/1.T4952</a>&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def frozen_shock_conditions(M: float, gas: ct.ThermoPhase, method: str = None, *, max_iter: int = 1000,
+                            epsilon: float = 1e-6) -&gt; Tuple[Tuple[float, float], Tuple[float, float]]:
+    &#34;&#34;&#34;Calculates the region 2 and region 5 conditions using the FROzen SHock (FROSH) algorithm. The two-dimensional
+    iterative Newton-Raphson solver for the Rankine-Hugoniot relations is derived by Campbell et al.[^1].
+
+    Parameters
+    ----------
+    M: float
+        incident shock Mach number
+    gas: cantera.ThermoPhase
+        driven gas at initial conditions
+    method: str, optional
+        method used for thermodynamic property calculation assumptions
+
+        - &#39;FF&#39; (Frozen-Frozen)
+
+        - &#39;FE&#39; (Frozen-Equilibrium)
+
+        - &#39;EE&#39; (Equilibrium-Equilibrium), default
+
+    max_iter: int, optional
+        maximum number of iterations for region conditions iterative solvers
+    epsilon: float, optional
+        relative error convergence criteria for region conditions iterative solvers
+
+    Returns
+    -------
+    T2: float
+        temperature in region 2 (K)
+    P2: float
+        pressure in region 2 (Pa)
+    T5: float
+        temperature in region 5 (K)
+    P5: float
+        pressure in region 5 (Pa)
+
+    References
+    ----------
+    [^1]: Campbell, Owen, Davidson, Hanson: Dependence of Calculated Postshock Thermodynamic Variables on Vibrational
+    Equilibrium and Input Uncertainty. AIAA Journal of Thermophysics and Heat Transfer 31, 586-608 (2017).
+    https://doi.org/10.2514/1.T4952
+
+    &#34;&#34;&#34;
+
+    method = &#39;EE&#39; if method is None else method
+    if method not in {&#34;FF&#34;, &#34;FE&#34;, &#34;EE&#34;}:
+        raise ValueError(&#34;Invalid method - valid options are \&#39;FF\&#39;, \&#39;FE\&#39;, and \&#39;EE\&#39;&#34;)
+
+    R = ct.gas_constant / gas.mean_molecular_weight
+
+    # Get properties of mixture at region 1 conditions
+    T1, P1 = gas.TP
+
+    h1 = gas.enthalpy_mass
+    cp1 = gas.cp_mass
+    gamma1 = cp1 / (cp1 - R)
+    u1 = M * (R * gamma1 * T1) ** 0.5
+    v1 = R * T1 / P1
+
+    # Define functions for frozen enthalpy computation
+    _linear_polyatomic_molecules = frozenset({
+        &#34;BeCl2&#34;, &#34;C3&#34;, &#34;CCN&#34;, &#34;CCO&#34;, &#34;CH2&#34;, &#34;CNC&#34;, &#34;CNN&#34;, &#34;CO2&#34;, &#34;F2Xe&#34;, &#34;HCC&#34;, &#34;HCN&#34;, &#34;N2O&#34;,
+        &#34;N3&#34;, &#34;NCN&#34;, &#34;NCO&#34;, &#34;OCS&#34;, &#34;C2H2&#34;, &#34;C2N2&#34;, &#34;CCCC&#34;, &#34;HCCCl&#34;, &#34;C3H2&#34;, &#34;C3N2&#34;, &#34;C3O2&#34;
+    })
+
+    def rotational_DOF(species: str) -&gt; int:
+        &#34;&#34;&#34;Gets the number of rotational degrees of freedom of a species molecule using Tables 6 and 7 in
+        reference [^1]&#34;&#34;&#34;
+        if species in _linear_polyatomic_molecules:
+            return 2
+        else:
+            num_atoms = sum(gas.species(species).composition.values())
+            if num_atoms == 1:
+                return 0
+            elif num_atoms == 2:
+                return 2
+            else:
+                return 3
+
+    translational_rotational_energy = np.sum(np.array([x * (5 + rotational_DOF(species)) / 2
+                                                       for species, x in gas.mole_fraction_dict().items()]))
+
+    def h_frozen(T: float) -&gt; float:
+        &#34;&#34;&#34;Calculates the vibrationally frozen enthalpy of the mixture&#34;&#34;&#34;
+        return h1 + R * (T - T1) * translational_rotational_energy
+
+    # Calculate initial guess for region 2 conditions from ideal shock equations
+    T2_guess = T1 * ((gamma1 * M ** 2 - (gamma1 - 1) / 2) * ((gamma1 - 1) / 2 * M ** 2 + 1)) \
+               / (((gamma1 + 1) / 2) ** 2 * M ** 2)
+    P2_guess = P1 * (2 * gamma1 * M ** 2 - (gamma1 - 1)) / (gamma1 + 1)
+
+    for i in range(max_iter):
+        # Get properties of mixture at guessed region 2 conditions
+        gas.TP = T2_guess, P2_guess
+
+        h2 = gas.enthalpy_mass if method[0] == &#39;E&#39; else h_frozen(T2_guess)
+        cp2 = gas.cp_mass if method[0] == &#39;E&#39; else cp1
+        v2 = R * T2_guess / P2_guess
+
+        # Calculate iterative solver terms
+        f1 = (P2_guess / P1 - 1) + (u1 ** 2 / (P1 * v1)) * (v2 / v1 - 1)
+        f2 = ((h2 - h1) / (1 / 2 * u1 ** 2)) + (v2 ** 2 / v1 ** 2 - 1)
+
+        df1_dP2_T2 = (1 / P1) + (u1 ** 2 / (P1 * v1 ** 2)) * (-v2 / P2_guess)
+        df1_dT2_P2 = (u1 ** 2 / (P1 * v1 ** 2)) * (v2 / T2_guess)
+        df2_dP2_T2 = (2 * v2 / v1 ** 2) * (-v2 / P2_guess)
+        df2_dT2_P2 = (2 / u1 ** 2) * cp2 + (2 * v2 / v1 ** 2) * (v2 / T2_guess)
+
+        # Calculate next iteration for region 2 conditions
+        T2, P2 = tuple((np.array([[T2_guess], [P2_guess]])
+                        - np.matmul(np.linalg.inv(np.array([[df1_dT2_P2, df1_dP2_T2], [df2_dT2_P2, df2_dP2_T2]])),
+                                    np.array([[f1], [f2]]))).T[0])
+
+        # Check for convergence and maximum iteration conditions
+        if abs(T2 - T2_guess) / T2_guess &lt; epsilon and abs(P2 - P2_guess) / P2_guess &lt; epsilon:
+            break
+        elif i == max_iter - 1:
+            raise RuntimeError(&#34;Convergence criteria not met within the maximum number of iterations&#34;)
+        else:
+            T2_guess = T2
+            P2_guess = P2
+
+    # Get properties of mixture at solved region 2 conditions
+    gas.TP = T2, P2
+
+    h2 = gas.enthalpy_mass if method[0] == &#39;E&#39; else h_frozen(T2)
+    cp2 = gas.cp_mass if method[0] == &#39;E&#39; else cp1
+    v2 = R * T2 / P2
+    gamma2 = cp2 / (cp2 - R)
+    u2 = u1 * v2 / v1
+
+    # Calculate initial guess for region 5 conditions from ideal shock equations
+    P5_guess = P2 * ((gamma2 + 1) / (gamma2 - 1) + 2 - P1 / P2) / (1 + (gamma2 + 1) / (gamma2 - 1) * P1 / P2)
+    T5_guess = T2 * (P5_guess / P2) * ((gamma2 + 1) / (gamma2 - 1) + P5_guess / P2) \
+               / (1 + (gamma2 + 1) / (gamma2 - 1) * P5_guess / P2)
+
+    for i in range(max_iter):
+        # Get properties of mixture at guessed region 5 conditions
+        gas.TP = T5_guess, P5_guess
+        h5 = gas.enthalpy_mass if method[1] == &#39;E&#39; else h_frozen(T5_guess)
+        cp5 = gas.cp_mass if method[1] == &#39;E&#39; else cp1
+        v5 = R * T5_guess / P5_guess
+
+        # Calculate iterative solver terms
+        f3 = (P5_guess / P2 - 1) + ((u1 - u2) ** 2 / (P2 * (v5 - v2)))
+        f4 = ((h5 - h2) / (1 / 2 * (u1 - u2) ** 2)) + ((v5 + v2) / (v5 - v2))
+
+        df3_dP5_T5 = (1 / P2) + (-(u1 - u2) ** 2 / (P2 * (v5 - v2) ** 2)) * (-v5 / P5_guess)
+        df3_dT5_P5 = (-(u1 - u2) ** 2 / (P2 * (v5 - v2) ** 2)) * (v5 / T5_guess)
+        df4_dP5_T5 = (-2 * v2 / (v5 - v2) ** 2) * (-v5 / P5_guess)
+        df4_dT5_P5 = (1 / (1 / 2 * (u1 - u2) ** 2)) * cp5 + (-2 * v2 / (v5 - v2) ** 2) * (v5 / T5_guess)
+
+        # Calculate next iteration for region 5 conditions
+        T5, P5 = tuple((np.array([[T5_guess], [P5_guess]])
+                        - np.matmul(np.linalg.inv(np.array([[df3_dT5_P5, df3_dP5_T5], [df4_dT5_P5, df4_dP5_T5]])),
+                                    np.array([[f3], [f4]]))).T[0])
+
+        # Check for convergence and maximum iteration conditions
+        if abs(T5 - T5_guess) / T5_guess &lt; epsilon and abs(P5 - P5_guess) / P5_guess &lt; epsilon:
+            break
+        elif i == max_iter - 1:
+            raise RuntimeError(&#34;Convergence criteria not met within the maximum number of iterations&#34;)
+        else:
+            T5_guess = T5
+            P5_guess = P5
+
+    # Reset object to region 1 conditions
+    gas.TP = T1, P1
+
+    return (T2, P2), (T5, P5)</code></pre>
+</details>
+</dd>
+<dt id="knightshock.gasdynamics.shock_tube_flow_properties"><code class="name flex">
+<span>def <span class="ident">shock_tube_flow_properties</span></span>(<span>M: float, T1: float, T4: float, MW1: float, MW4: float, gamma1: float, gamma4: float, *, area_ratio: float = 1) ‑> Tuple[float, float, float, float]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculates the characteristics associated with the formation of an ideal incident shock for a shock tube flow
+with monotonic convergence at the diaphragm section. The equations derived by Alpher and White<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup> were optimized
+for use with <code>scipy.optimize.root_scalar</code>.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>M</code></strong> :&ensp;<code>float</code></dt>
+<dd>incident shock Mach number</dd>
+<dt><strong><code>T1</code></strong> :&ensp;<code>float</code></dt>
+<dd>absolute temperature of driven gas</dd>
+<dt><strong><code>T4</code></strong> :&ensp;<code>float</code></dt>
+<dd>absolute temperature of driver gas</dd>
+<dt><strong><code>MW1</code></strong> :&ensp;<code>float</code></dt>
+<dd>mean molecular weight of driven gas</dd>
+<dt><strong><code>MW4</code></strong> :&ensp;<code>float, float</code></dt>
+<dd>mean molecular weight of driver gas</dd>
+<dt><strong><code>gamma1</code></strong> :&ensp;<code>float</code></dt>
+<dd>specific heat ratio of driven gas</dd>
+<dt><strong><code>gamma4</code></strong> :&ensp;<code>float, float</code></dt>
+<dd>specific heat ratio of driver gas</dd>
+<dt><strong><code>area_ratio</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>ratio of driver to driven area</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>P4_P1</code></strong> :&ensp;<code>float</code></dt>
+<dd>ratio of driver to driven initial pressures</dd>
+<dt><strong><code>M3a</code></strong> :&ensp;<code>float</code></dt>
+<dd>Mach number of flow before nozzle</dd>
+<dt><strong><code>Me</code></strong> :&ensp;<code>float</code></dt>
+<dd>Mach number of flow at nozzle exit</dd>
+<dt><strong><code>M3</code></strong> :&ensp;<code>float</code></dt>
+<dd>Mach number of fully expanded driver flow</dd>
+</dl>
+<h2 id="references">References</h2>
+<div class="footnote">
+<hr>
+<ol>
+<li id="fn:1">
+<p>Alpher, R., &amp; White, D. (1958). Flow in shock tubes with area change at the diaphragm section. Journal of
+Fluid Mechanics, 3(5), 457-470. <a href="https://doi.org/10.1017/S0022112058000124">https://doi.org/10.1017/S0022112058000124</a>&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def shock_tube_flow_properties(M: float, T1: float, T4: float, MW1: float, MW4: float, gamma1: float, gamma4: float,
+                               *, area_ratio: float = 1) -&gt; Tuple[float, float, float, float]:
+    &#34;&#34;&#34;Calculates the characteristics associated with the formation of an ideal incident shock for a shock tube flow
+    with monotonic convergence at the diaphragm section. The equations derived by Alpher and White[^1] were optimized
+    for use with `scipy.optimize.root_scalar`.
+
+    Parameters
+    ----------
+    M: float
+        incident shock Mach number
+    T1: float
+        absolute temperature of driven gas
+    T4: float
+        absolute temperature of driver gas
+    MW1: float
+        mean molecular weight of driven gas
+    MW4: float, float
+        mean molecular weight of driver gas
+    gamma1: float
+        specific heat ratio of driven gas
+    gamma4: float, float
+        specific heat ratio of driver gas
+    area_ratio: float, optional
+        ratio of driver to driven area
+
+    Returns
+    -------
+    P4_P1: float
+        ratio of driver to driven initial pressures
+    M3a: float
+        Mach number of flow before nozzle
+    Me: float
+        Mach number of flow at nozzle exit
+    M3: float
+        Mach number of fully expanded driver flow
+
+    References
+    ----------
+    [^1]: Alpher, R., &amp; White, D. (1958). Flow in shock tubes with area change at the diaphragm section. Journal of
+    Fluid Mechanics, 3(5), 457-470. https://doi.org/10.1017/S0022112058000124
+
+    &#34;&#34;&#34;
+
+    if not M &gt; 1:
+        raise ValueError(&#34;M must be greater than one&#34;)
+    if area_ratio &lt; 1:
+        raise ValueError(&#34;Area ratio must be greater than or equal to one&#34;)
+
+    a1_u2 = (gamma1 + 1) / 2 * M / (M ** 2 - 1)
+    a4_a1 = (gamma4 / gamma1 * MW1 / MW4 * T4 / T1) ** 0.5
+    P2_P1 = (2 * gamma1 * M ** 2 - (gamma1 - 1)) / (gamma1 + 1)
+
+    def equivalence_factor(_M3a, _Me):
+        return (((2 + (gamma4 - 1) * _M3a ** 2) / (2 + (gamma4 - 1) * _Me ** 2)) ** 0.5
+                * (2 + (gamma4 - 1) * _Me) / (2 + (gamma4 - 1) * _M3a)) ** (2 * gamma4 / (gamma4 - 1))
+
+    def calc_M3(_M3a, _Me):
+        return 1 / (a1_u2 * a4_a1 * equivalence_factor(_M3a, _Me) ** ((gamma4 - 1) / gamma4 / 2) - (gamma4 - 1) / 2)
+
+    def solve_M3a(_Me):
+        def area_ratio_error(_M3a):
+            return area_ratio * _M3a - _Me * ((2 + (gamma4 - 1) * _M3a ** 2) / (2 + (gamma4 - 1) * _Me ** 2)) \
+                   ** ((gamma4 + 1) / (gamma4 - 1) / 2)
+
+        _root_results = optimize.root_scalar(area_ratio_error, bracket=[0, 1])
+        if not _root_results.converged:
+            raise RuntimeError(&#34;Root finding routine for M3a did not converge&#34;)
+        return _root_results.root
+
+    # Assume supersonic case (Me = 1)
+    Me = 1
+    M3a = solve_M3a(Me)
+    M3 = calc_M3(M3a, Me)
+
+    # Subsonic case (M3 = Me)
+    if M3 &lt; 1:
+        root_results = optimize.root_scalar(lambda _M3: _M3 - calc_M3(solve_M3a(_Me=_M3), _Me=_M3), bracket=[0, 1])
+        if not root_results.converged:
+            raise RuntimeError(&#34;Root finding routine for M3 did not converge&#34;)
+        M3 = root_results.root
+        Me = M3
+        M3a = solve_M3a(Me)
+
+    P4_P1 = P2_P1 / equivalence_factor(M3a, Me) * (1 + (gamma4 - 1) / 2 * M3) ** (2 * gamma4 / (gamma4 - 1))
+
+    return P4_P1, M3a, Me, M3</code></pre>
+</details>
+</dd>
+<dt id="knightshock.gasdynamics.tailored_mixture"><code class="name flex">
+<span>def <span class="ident">tailored_mixture</span></span>(<span>M: float, T1: float, T4: float, MW1: float, MW4: Tuple[float, float], gamma1: float, gamma4: Tuple[float, float], *, area_ratio: float = 1) ‑> Tuple[float, float]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculates the species mole fractions that tailor the interaction between the reflected shock wave and the
+contact surface. The mole fractions for which the output of
+<code><a title="knightshock.gasdynamics.shock_tube_flow_properties" href="#knightshock.gasdynamics.shock_tube_flow_properties">shock_tube_flow_properties()</a></code> satisfies the tailoring condition described by Hong et al.<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup>
+is iteratively calculated using <code>scipy.optimize.root_scalar</code>.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>M</code></strong> :&ensp;<code>float</code></dt>
+<dd>incident shock Mach number</dd>
+<dt><strong><code>T1</code></strong> :&ensp;<code>float</code></dt>
+<dd>absolute temperature of driven gas</dd>
+<dt><strong><code>T4</code></strong> :&ensp;<code>float</code></dt>
+<dd>absolute temperature of driver gas</dd>
+<dt><strong><code>MW1</code></strong> :&ensp;<code>float</code></dt>
+<dd>mean molecular weight of driven gas</dd>
+<dt><strong><code>MW4</code></strong> :&ensp;<code>Tuple[float, float]</code></dt>
+<dd>mean molecular weights of driver species used for tailoring</dd>
+<dt><strong><code>gamma1</code></strong> :&ensp;<code>float</code></dt>
+<dd>specific heat ratio of driven gas</dd>
+<dt><strong><code>gamma4</code></strong> :&ensp;<code>Tuple[float, float]</code></dt>
+<dd>specific heat ratios of driver species used for tailoring</dd>
+</dl>
+<p>area_ratio:
+ratio of driver to driven area</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>x0</code></strong>, <strong><code>x1</code></strong> :&ensp;<code>float, float</code></dt>
+<dd>mole fractions of driver species</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>Tailoring solution does not exist for the given inputs</dd>
+<dt><code>RuntimeError</code></dt>
+<dd>Root finding routine does not converge</dd>
+</dl>
+<h2 id="references">References</h2>
+<div class="footnote">
+<hr>
+<ol>
+<li id="fn:1">
+<p>Hong, Z., Davidson, D.F. &amp; Hanson, R.K. Contact surface tailoring condition for shock tubes with different
+driver and driven section diameters. Shock Waves 19, 331–336 (2009). <a href="https://doi.org/10.1007/s00193-009-0212-z">https://doi.org/10.1007/s00193-009-0212-z</a>&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def tailored_mixture(M: float, T1: float, T4: float, MW1: float, MW4: Tuple[float, float], gamma1: float,
+                     gamma4: Tuple[float, float], *, area_ratio: float = 1) -&gt; Tuple[float, float]:
+    &#34;&#34;&#34;Calculates the species mole fractions that tailor the interaction between the reflected shock wave and the
+    contact surface. The mole fractions for which the output of
+    `knightshock.gasdynamics.shock_tube_flow_properties` satisfies the tailoring condition described by Hong et al.[^1]
+    is iteratively calculated using `scipy.optimize.root_scalar`.
+
+    Parameters
+    ----------
+    M: float
+        incident shock Mach number
+    T1: float
+        absolute temperature of driven gas
+    T4: float
+        absolute temperature of driver gas
+    MW1: float
+        mean molecular weight of driven gas
+    MW4: Tuple[float, float]
+        mean molecular weights of driver species used for tailoring
+    gamma1: float
+        specific heat ratio of driven gas
+    gamma4: Tuple[float, float]
+        specific heat ratios of driver species used for tailoring
+    area_ratio:
+        ratio of driver to driven area
+
+    Returns
+    -------
+    x0, x1 : float, float
+        mole fractions of driver species
+
+    Raises
+    ------
+    ValueError
+        Tailoring solution does not exist for the given inputs
+    RuntimeError
+        Root finding routine does not converge
+
+    References
+    ----------
+    [^1]: Hong, Z., Davidson, D.F. &amp; Hanson, R.K. Contact surface tailoring condition for shock tubes with different
+    driver and driven section diameters. Shock Waves 19, 331–336 (2009). https://doi.org/10.1007/s00193-009-0212-z
+
+    &#34;&#34;&#34;
+
+    P5_P2 = (M ** 2 * (3 * gamma1 - 1) - 2 * (gamma1 - 1)) / (M ** 2 * (gamma1 - 1) + 2)
+
+    a0 = gamma4[0] / (gamma4[0] - 1)
+    a1 = gamma4[1] / (gamma4[1] - 1)
+
+    def _M3_error(_x0):
+        _x1 = 1 - _x0
+
+        _MW4 = _x0 * MW4[0] + _x1 * MW4[1]
+        _gamma4 = (_x0 * a0 + _x1 * a1) / (_x0 * a0 + _x1 * a1 - 1)
+
+        _alpha4 = (_gamma4 + 1) / (_gamma4 - 1)
+        _M3_tailored = (_alpha4 - 1) * (P5_P2 - 1) / ((1 + _alpha4) * (1 + _alpha4 * P5_P2)) ** 0.5
+
+        return _M3_tailored - shock_tube_flow_properties(M, T1, T4, MW1, _MW4, gamma1, _gamma4,
+                                                         area_ratio=area_ratio)[3]
+
+    try:
+        root_results = optimize.root_scalar(lambda _x0: _M3_error(_x0), bracket=[0, 1])
+    except ValueError:
+        raise ValueError(&#34;Tailoring solution does not exist for the given inputs&#34;)
+
+    if not root_results.converged:
+        raise RuntimeError(&#34;Root finding routine for species mole fractions did not converge&#34;)
+
+    x0 = root_results.root
+    x1 = 1 - x0
+
+    return x0, x1</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="knightshock" href="index.html">knightshock</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="knightshock.gasdynamics.frozen_shock_conditions" href="#knightshock.gasdynamics.frozen_shock_conditions">frozen_shock_conditions</a></code></li>
+<li><code><a title="knightshock.gasdynamics.shock_tube_flow_properties" href="#knightshock.gasdynamics.shock_tube_flow_properties">shock_tube_flow_properties</a></code></li>
+<li><code><a title="knightshock.gasdynamics.tailored_mixture" href="#knightshock.gasdynamics.tailored_mixture">tailored_mixture</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.1</a>.</p>
+</footer>
+</body>
+</html>
