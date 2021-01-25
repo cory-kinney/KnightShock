@@ -13,24 +13,34 @@ def frozen_shock_conditions(M: float, gas: ct.ThermoPhase, method: str = None, *
 
     Parameters
     ----------
-    M
+    M: float
         incident shock Mach number
-    gas
+    gas: cantera.ThermoPhase
         driven gas at initial conditions
-    method
+    method: str, optional
         method used for thermodynamic property calculation assumptions
+
         - 'FF' (Frozen-Frozen)
+
         - 'FE' (Frozen-Equilibrium)
-        - 'EE' (Equilibrium-Equilibrium)
-    max_iter
+
+        - 'EE' (Equilibrium-Equilibrium), default
+
+    max_iter: int, optional
         maximum number of iterations for region conditions iterative solvers
-    epsilon
+    epsilon: float, optional
         relative error convergence criteria for region conditions iterative solvers
 
     Returns
     -------
-    shock_conditions:
-        T2, P2, T5, P5
+    T2: float
+        temperature in region 2 (K)
+    P2: float
+        pressure in region 2 (Pa)
+    T5: float
+        temperature in region 5 (K)
+    P5: float
+        pressure in region 5 (Pa)
 
     References
     ----------
@@ -61,7 +71,7 @@ def frozen_shock_conditions(M: float, gas: ct.ThermoPhase, method: str = None, *
         "N3", "NCN", "NCO", "OCS", "C2H2", "C2N2", "CCCC", "HCCCl", "C3H2", "C3N2", "C3O2"
     })
 
-    def rotational_DOF(species):
+    def rotational_DOF(species: str) -> int:
         """Gets the number of rotational degrees of freedom of a species molecule using Tables 6 and 7 in
         reference [^1]"""
         if species in _linear_polyatomic_molecules:
@@ -78,7 +88,7 @@ def frozen_shock_conditions(M: float, gas: ct.ThermoPhase, method: str = None, *
     translational_rotational_energy = np.sum(np.array([x * (5 + rotational_DOF(species)) / 2
                                                        for species, x in gas.mole_fraction_dict().items()]))
 
-    def h_frozen(T):
+    def h_frozen(T: float) -> float:
         """Calculates the vibrationally frozen enthalpy of the mixture"""
         return h1 + R * (T - T1) * translational_rotational_energy
 
@@ -176,42 +186,33 @@ def shock_tube_flow_properties(M: float, T1: float, T4: float, MW1: float, MW4: 
 
     Parameters
     ----------
-    M
+    M: float
         incident shock Mach number
-    T1
+    T1: float
         absolute temperature of driven gas
-    T4
+    T4: float
         absolute temperature of driver gas
-    MW1
+    MW1: float
         mean molecular weight of driven gas
-    MW4
+    MW4: float, float
         mean molecular weight of driver gas
-    gamma1
+    gamma1: float
         specific heat ratio of driven gas
-    gamma4
+    gamma4: float, float
         specific heat ratio of driver gas
-    area_ratio
+    area_ratio: float, optional
         ratio of driver to driven area
 
     Returns
     -------
-    P4_P1
+    P4_P1: float
         ratio of driver to driven initial pressures
-    M3a
+    M3a: float
         Mach number of flow before nozzle
-    Me
+    Me: float
         Mach number of flow at nozzle exit
-    M3
+    M3: float
         Mach number of fully expanded driver flow
-
-    Raises
-    ------
-    ValueError
-        `M` is not greater than one
-    ValueError
-        `area_ratio` is less than one
-    RuntimeError
-        Solution does not converge
 
     References
     ----------
@@ -269,34 +270,32 @@ def tailored_mixture(M: float, T1: float, T4: float, MW1: float, MW4: Tuple[floa
                      gamma4: Tuple[float, float], *, area_ratio: float = 1) -> Tuple[float, float]:
     """Calculates the species mole fractions that tailor the interaction between the reflected shock wave and the
     contact surface. The mole fractions for which the output of
-    `knightshock.gas_dynamics.shock_tube_flow_properties` satisfies the tailoring condition described by Hong et al.[^1]
+    `knightshock.gasdynamics.shock_tube_flow_properties` satisfies the tailoring condition described by Hong et al.[^1]
     is iteratively calculated using `scipy.optimize.root_scalar`.
 
     Parameters
     ----------
-    M
+    M: float
         incident shock Mach number
-    T1
+    T1: float
         absolute temperature of driven gas
-    T4
+    T4: float
         absolute temperature of driver gas
-    MW1
+    MW1: float
         mean molecular weight of driven gas
-    MW4
+    MW4: Tuple[float, float]
         mean molecular weights of driver species used for tailoring
-    gamma1
+    gamma1: float
         specific heat ratio of driven gas
-    gamma4
+    gamma4: Tuple[float, float]
         specific heat ratios of driver species used for tailoring
-    area_ratio
+    area_ratio:
         ratio of driver to driven area
 
     Returns
     -------
-    x0 : float
-        mole fraction of first driver species
-    x1 : float
-        mole fraction of second driver species
+    x0, x1 : float, float
+        mole fractions of driver species
 
     Raises
     ------

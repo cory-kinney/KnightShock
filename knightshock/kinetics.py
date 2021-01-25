@@ -1,14 +1,13 @@
 """"""
 
-from matplotlib import pyplot as plt
-from typing import Union, List
+from typing import Union, Iterable
 from tqdm import tqdm
 import cantera as ct
 import pandas as pd
 import numpy as np
 
 
-class ShockTubeReactorModel:
+class ShockTubeReactor:
     """Constant volume, adiabatic reactor model for shock tube experiment chemical kinetics simulations"""
 
     def __init__(self, gas: ct.Solution):
@@ -16,7 +15,7 @@ class ShockTubeReactorModel:
 
         Parameters
         ----------
-        gas : `cantera.Solution`
+        gas: cantera.Solution
             initial state of the reactor
 
         """
@@ -29,9 +28,9 @@ class ShockTubeReactorModel:
 
         Parameters
         ----------
-        duration
-            duration of the simulation [s]
-        log_frequency
+        duration: float
+            duration of the simulation (s)
+        log_frequency: int, optional
             number of iterations between logging data points
 
         """
@@ -60,71 +59,64 @@ class ShockTubeReactorModel:
         return self.states.t[np.argmax(np.diff(self.states.P) / np.diff(self.states.t))]
 
     def IDT_peak_species_concentration(self, species: str) -> float:
-        """Calculates the ignition delay time from the peak of the species mole fraction
+        """Calculates the ignition delay time from the peak mole fraction of a species
 
         Parameters
         ----------
-        species
-            name of species from the mechanism file
+        species: str
+            name of species as listed in the mechanism
 
         """
         return self.states.t[np.argmax(self.states(species).X)]
 
-    def plot_temperature_history(self):
-        plt.figure()
-        plt.plot(self.states.t * 1e3, self.states.T)
-        plt.xlabel("Time (ms)")
-        plt.ylabel("Temperature (K)")
-        plt.show()
 
-    def plot_pressure_history(self):
-        plt.figure()
-        plt.plot(self.states.t * 1e3, self.states.P / 1e5)
-        plt.xlabel("Time (ms)")
-        plt.ylabel("Pressure (bar)")
-        plt.show()
+class KineticsParameterStudy:
+    """Class designed for convenient execution of many `knightshock.kinetics.ShockTubeReactor` simulations"""
 
-    def plot_concentration(self, species):
-        if isinstance(species, str):
-            species = [species]
-
-        plt.figure()
-        for s in species:
-            plt.plot(self.states.t * 1e3, self.states(s).X, label=s)
-        plt.xlabel("Time (ms)")
-        plt.ylabel("Mole Fraction")
-        plt.legend(loc='upper right')
-        plt.show()
-
-
-class ParameterStudy:
     def __init__(self, df: pd.DataFrame, mechanism: str):
         self.gas = ct.Solution(mechanism)
         self.df = df
 
     @classmethod
-    def product(cls, T: Union[float, List[float]], P, X, mechanism):
+    def from_product(cls, T: Union[float, Iterable[float]], P: Union[float, Iterable[float]],
+                     X: Union[str, Iterable[str]], mechanism: str):
+        """Defines a parameter study from the cartesian product of the given temperatures, pressures, and mixtures using
+        a given mechanism
+
+        Parameters
+        ----------
+        T: float or iterable of floats
+            temperature
+        P: float or iterable of floats
+            pressure
+        X: str or iterable of str
+            mixture
+        mechanism: str
+            file path of Cantera-compatible mechanism
+
+        """
         index = pd.MultiIndex.from_product([X, P, T], names=["X", "P", "T"])
         return cls(pd.DataFrame(index=index).reset_index(), mechanism)
 
     def run(self, duration: float):
-        IDT = []
+        """Runs all cases using the `knightshock.kinetics.ShockTubeReactor` for the given duration and computes ignition
+        delay time by maximum pressure rise
 
+        Parameters
+        ----------
+        duration: float
+            duration of the simulation (s)
+
+        """
+        IDT = []
         for index, row in self.df.iterrows():
             T, P, X = row["T"], row["P"], row["X"]
             print("{}/{} | T = {:.0f} K, P = {:.1f} bar, {{{}}}".format(index + 1, len(self.df.index), T, P / 1e5, X))
 
             self.gas.TPX = T, P, X
-            model = ShockTubeReactorModel(self.gas)
+            model = ShockTubeReactor(self.gas)
             model.run(duration)
 
             IDT.append(model.IDT_max_pressure_rise())
 
         self.df["IDT"] = IDT
-
-    def plot_IDT_profile(self, P, X):
-        data = self.df.loc[(self.df["P"] == P) & (self.df["X"] == X)]
-
-        plt.figure()
-        plt.scatter(data["T"], data["IDT"])
-        plt.show()
