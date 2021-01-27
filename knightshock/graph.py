@@ -91,12 +91,12 @@ def time_zero(t: np.ndarray, *, P: np.ndarray = None, schlieren: np.ndarray = No
 
         if axes_P:
             line_P.set_xdata(t - t0)
-            axes_P.set_xlim([x - t0 for x in axes_P.get_xlim()])
-        else:
-            axes_schlieren.set_xlim([x - t0 for x in axes_schlieren.get_xlim()])
 
         if axes_schlieren:
             line_schlieren.set_xdata(t - t0)
+            axes_schlieren.set_xlim([x - value for x in axes_schlieren.get_xlim()])
+        else:
+            axes_P.set_xlim([x - value for x in axes_P.get_xlim()])
 
         figure.canvas.draw()
 
