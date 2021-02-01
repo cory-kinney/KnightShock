@@ -35,7 +35,7 @@ def shock_velocity_from_ToF(x: np.ndarray, dt: np.ndarray) -> Tuple[float, float
         raise ValueError("Dimension of x (ndim = {}) must be 1".format(x.ndim))
     if dt.ndim != 1:
         raise ValueError("Dimension of dt array (ndim = {}) must be 1".format(dt.ndim))
-    if dt.shape[0] != x.shape[0] - 1:
+    if dt.size != x.size - 1:
         raise ValueError("Size of dt array (size = {}) must be 1 less than x array (size = {})".format(dt.size, x.size))
 
     x = np.abs(x)

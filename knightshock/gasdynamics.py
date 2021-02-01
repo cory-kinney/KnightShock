@@ -7,7 +7,7 @@ import numpy as np
 
 
 def frozen_shock_conditions(M: float, gas: ct.ThermoPhase, method: str = None, *, max_iter: int = 1000,
-                            epsilon: float = 1e-6) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+                            epsilon: float = 1e-6) -> Tuple[float, float, float, float]:
     """Calculates the region 2 and region 5 conditions using the FROzen SHock (FROSH) algorithm. The two-dimensional
     iterative Newton-Raphson solver for the Rankine-Hugoniot relations is derived by Campbell et al.[^1].
 
@@ -175,7 +175,7 @@ def frozen_shock_conditions(M: float, gas: ct.ThermoPhase, method: str = None, *
     # Reset object to region 1 conditions
     gas.TP = T1, P1
 
-    return (T2, P2), (T5, P5)
+    return T2, P2, T5, P5
 
 
 def shock_tube_flow_properties(M: float, T1: float, T4: float, MW1: float, MW4: float, gamma1: float, gamma4: float,
