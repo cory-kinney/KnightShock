@@ -26,93 +26,136 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from typing import List, Tuple
+<pre><code class="python">from matplotlib import pyplot as plt
+from matplotlib.widgets import RectangleSelector
+from matplotlib.ticker import AutoMinorLocator
+from matplotlib.axes import Axes
+from matplotlib.lines import Line2D
+from matplotlib.backend_bases import MouseEvent
+
+from typing import Callable
 import numpy as np
 
-from matplotlib import pyplot as plt
-from matplotlib.backend_bases import MouseEvent
-from matplotlib.widgets import RectangleSelector
 
-
-def find_feature(x: np.ndarray, y: np.ndarray, *, feature: str = &#39;max&#39;, guess: Tuple[float, float] = (None, None),
-                 title: str = &#39;&#39;, xlabel: str = &#39;&#39;, ylabel: str = &#39;&#39;) -&gt; Tuple[float, float]:
-    &#34;&#34;&#34;Finds the specified feature in a user-selected region of plotted data
+def data_selector(axes: Axes, line: Line2D, *, callback: Callable[[np.ndarray, np.ndarray], None], **kwargs)\
+        -&gt; RectangleSelector:
+    &#34;&#34;&#34;Passes data contained inside a user-selected graphical region to a callback function
 
     Parameters
     ----------
-    x: np.ndarray
-        x values of feature data
-    y: np.ndarray
-        y values of feature data
-    feature: str, optional
-        method used for finding feature
-
-        - &#39;max&#39;, default
-
-        - &#39;min&#39;
-
-        - &#39;max slope&#39;
-
-    guess: Tuple[float, float], optional
-        guess for feature x, y values
-    title: str, optional
-        title of plot
-    xlabel: str, optional
-        label for x axis
-    ylabel: str, optional
-        label for y axis
+    axes: matplotlib.axes.Axes
+        axes on which data is plotted
+    line: matplotlib.lines.Line2D
+        plotted data from which to select
+    callback: Callable[[numpy.ndarray, numpy.ndarray], None]
+        function to pass the selected x, y data to
 
     Returns
     -------
-    point: Tuple[float, float]
-        feature x, y values
+    RectangleSelector
+        reference to the RectangleSelector used to select the data which is returned to avoid garbage collection
 
     &#34;&#34;&#34;
-    if feature not in {&#39;max&#39;, &#39;min&#39;, &#39;max slope&#39;}:
-        raise ValueError(f&#34;Invalid feature specified (&#39;{feature}&#39;) - valid features are &#39;max&#39;, &#39;min&#39;, or &#39;max slope&#39;&#34;)
-
-    fig, ax = plt.subplots()
-
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-
-    ax.plot(x, y)
-    sc = ax.scatter(*guess)
-
-    point: Tuple[float, float] = guess
 
     def select_callback(click_event: MouseEvent, release_event: MouseEvent):
-        nonlocal point
-
         x1, y1 = click_event.xdata, click_event.ydata
         x2, y2 = release_event.xdata, release_event.ydata
 
         try:
-            region_indices = np.logical_and(np.logical_and(x &gt;= x1, x &lt;= x2), np.logical_and(y &gt;= y1, y &lt;= y2))
-
-            if feature == &#39;max&#39;:
-                feature_index = np.argmax(y[region_indices])
-            elif feature == &#39;min&#39;:
-                feature_index = np.argmin(y[region_indices])
-            elif feature == &#39;max slope&#39;:
-                slope = np.diff(y) / np.diff(x)
-                feature_index = np.argmax(slope[region_indices[:-1]])
-
-            point = x[region_indices][feature_index], y[region_indices][feature_index]
-
-            sc.set_offsets(np.c_[point[0], point[1]])
-            fig.canvas.draw()
+            x, y = line.get_xdata(), line.get_ydata()
+            data_indices = np.logical_and(np.logical_and(x &gt;= x1, x &lt;= x2), np.logical_and(y &gt;= y1, y &lt;= y2))
+            callback(x[data_indices], y[data_indices])
 
         except ValueError:
             pass
 
-    selector = RectangleSelector(ax, select_callback, useblit=True, drawtype=&#39;box&#39;,
-                                 lineprops=dict(color=&#39;black&#39;, linestyle=&#39;-&#39;, alpha=0.5),
-                                 rectprops=dict(color=&#39;gray&#39;, alpha=0.2, fill=True))
-    plt.show()
+    return RectangleSelector(axes, select_callback, useblit=True, drawtype=&#39;box&#39;, **kwargs)
 
-    return point</code></pre>
+
+def time_zero(t: np.ndarray, *, P: np.ndarray = None, schlieren: np.ndarray = None):
+    &#34;&#34;&#34;Returns the time zero as defined by either the maximum slope of the pressure or the minimum of the schlieren in a
+    region graphically selected by the user
+
+    Parameters
+    ----------
+    t: np.ndarray
+        time array
+    P: np.ndarray, optional
+        pressure array
+    schlieren: np.ndarray, optional
+        schlieren array
+
+    Returns
+    -------
+    t0: float
+        time zero offset for initial t array
+
+    &#34;&#34;&#34;
+
+    if P is None and schlieren is None:
+        raise ValueError(&#34;Either pressure or schlieren data must be given&#34;)
+    elif P is not None and schlieren is not None:
+        figure, (axes_P, axes_schlieren) = plt.subplots(2, 1, sharex=&#39;col&#39;)
+        axes_schlieren.set_xlabel(&#34;Time&#34;)
+    else:
+        figure, axes = plt.subplots()
+        if P is not None:
+            axes_P = axes
+            axes_schlieren = None
+            axes_P.set_xlabel(&#34;Time&#34;)
+        else:
+            axes_P = None
+            axes_schlieren = axes
+            axes_schlieren.set_xlabel(&#34;Time&#34;)
+
+    figure.suptitle(&#39;Time Zero&#39;)
+    plt.tight_layout()
+
+    t0 = 0
+
+    def update_t0(value):
+        nonlocal t0
+        t0 += value
+
+        if axes_P:
+            line_P.set_xdata(t - t0)
+
+        if axes_schlieren:
+            line_schlieren.set_xdata(t - t0)
+            axes_schlieren.set_xlim([x - value for x in axes_schlieren.get_xlim()])
+        else:
+            axes_P.set_xlim([x - value for x in axes_P.get_xlim()])
+
+        figure.canvas.draw()
+
+    if axes_P:
+        axes_P.set_ylabel(&#34;Pressure&#34;)
+        axes_P.set_yticks([])
+        axes_P.set_yticklabels([])
+        axes_P.xaxis.set_minor_locator(AutoMinorLocator())
+        axes_P.tick_params(which=&#39;both&#39;, direction=&#39;in&#39;)
+        axes_P.axvline(0, color=&#39;r&#39;, linestyle=&#39;--&#39;, alpha=0.5, zorder=0)
+
+        line_P, = axes_P.plot(t, P, color=&#39;k&#39;)
+        axes_P.set_xlim([np.min(t), np.max(t)])
+        selector_P = data_selector(axes_P, line_P,
+                                   callback=lambda x, y: update_t0(x[np.argmax(np.diff(y) / np.diff(x))]))
+
+    if axes_schlieren:
+        axes_schlieren.set_ylabel(&#34;Schlieren&#34;)
+        axes_schlieren.set_yticks([])
+        axes_schlieren.set_yticklabels([])
+        axes_schlieren.xaxis.set_minor_locator(AutoMinorLocator())
+        axes_schlieren.tick_params(which=&#39;both&#39;, direction=&#39;in&#39;)
+        axes_schlieren.axvline(0, color=&#39;r&#39;, linestyle=&#39;--&#39;, alpha=0.5, zorder=0)
+
+        line_schlieren, = axes_schlieren.plot(t, schlieren, color=&#39;k&#39;)
+        axes_schlieren.set_xlim([np.min(t), np.max(t)])
+        selector_schlieren = data_selector(axes_schlieren, line_schlieren,
+                                           callback=lambda x, y: update_t0(x[np.argmin(y)]))
+
+    plt.show()
+    return t0</code></pre>
 </details>
 </section>
 <section>
@@ -122,129 +165,172 @@ def find_feature(x: np.ndarray, y: np.ndarray, *, feature: str = &#39;max&#39;, 
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="knightshock.graph.find_feature"><code class="name flex">
-<span>def <span class="ident">find_feature</span></span>(<span>x: numpy.ndarray, y: numpy.ndarray, *, feature: str = 'max', guess: Tuple[float, float] = (None, None), title: str = '', xlabel: str = '', ylabel: str = '') ‑> Tuple[float, float]</span>
+<dt id="knightshock.graph.data_selector"><code class="name flex">
+<span>def <span class="ident">data_selector</span></span>(<span>axes: matplotlib.axes._axes.Axes, line: matplotlib.lines.Line2D, *, callback: Callable[[numpy.ndarray, numpy.ndarray], NoneType], **kwargs) ‑> matplotlib.widgets.RectangleSelector</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Finds the specified feature in a user-selected region of plotted data</p>
+<div class="desc"><p>Passes data contained inside a user-selected graphical region to a callback function</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>x</code></strong> :&ensp;<code>np.ndarray</code></dt>
-<dd>x values of feature data</dd>
-<dt><strong><code>y</code></strong> :&ensp;<code>np.ndarray</code></dt>
-<dd>y values of feature data</dd>
-<dt><strong><code>feature</code></strong> :&ensp;<code>str</code>, optional</dt>
-<dd>
-<p>method used for finding feature</p>
-<ul>
-<li>
-<p>'max', default</p>
-</li>
-<li>
-<p>'min'</p>
-</li>
-<li>
-<p>'max slope'</p>
-</li>
-</ul>
-</dd>
-<dt><strong><code>guess</code></strong> :&ensp;<code>Tuple[float, float]</code>, optional</dt>
-<dd>guess for feature x, y values</dd>
-<dt><strong><code>title</code></strong> :&ensp;<code>str</code>, optional</dt>
-<dd>title of plot</dd>
-<dt><strong><code>xlabel</code></strong> :&ensp;<code>str</code>, optional</dt>
-<dd>label for x axis</dd>
-<dt><strong><code>ylabel</code></strong> :&ensp;<code>str</code>, optional</dt>
-<dd>label for y axis</dd>
+<dt><strong><code>axes</code></strong> :&ensp;<code>matplotlib.axes.Axes</code></dt>
+<dd>axes on which data is plotted</dd>
+<dt><strong><code>line</code></strong> :&ensp;<code>matplotlib.lines.Line2D</code></dt>
+<dd>plotted data from which to select</dd>
+<dt><strong><code>callback</code></strong> :&ensp;<code>Callable[[numpy.ndarray, numpy.ndarray], None]</code></dt>
+<dd>function to pass the selected x, y data to</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><strong><code>point</code></strong> :&ensp;<code>Tuple[float, float]</code></dt>
-<dd>feature x, y values</dd>
+<dt><code>RectangleSelector</code></dt>
+<dd>reference to the RectangleSelector used to select the data which is returned to avoid garbage collection</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def find_feature(x: np.ndarray, y: np.ndarray, *, feature: str = &#39;max&#39;, guess: Tuple[float, float] = (None, None),
-                 title: str = &#39;&#39;, xlabel: str = &#39;&#39;, ylabel: str = &#39;&#39;) -&gt; Tuple[float, float]:
-    &#34;&#34;&#34;Finds the specified feature in a user-selected region of plotted data
+<pre><code class="python">def data_selector(axes: Axes, line: Line2D, *, callback: Callable[[np.ndarray, np.ndarray], None], **kwargs)\
+        -&gt; RectangleSelector:
+    &#34;&#34;&#34;Passes data contained inside a user-selected graphical region to a callback function
 
     Parameters
     ----------
-    x: np.ndarray
-        x values of feature data
-    y: np.ndarray
-        y values of feature data
-    feature: str, optional
-        method used for finding feature
-
-        - &#39;max&#39;, default
-
-        - &#39;min&#39;
-
-        - &#39;max slope&#39;
-
-    guess: Tuple[float, float], optional
-        guess for feature x, y values
-    title: str, optional
-        title of plot
-    xlabel: str, optional
-        label for x axis
-    ylabel: str, optional
-        label for y axis
+    axes: matplotlib.axes.Axes
+        axes on which data is plotted
+    line: matplotlib.lines.Line2D
+        plotted data from which to select
+    callback: Callable[[numpy.ndarray, numpy.ndarray], None]
+        function to pass the selected x, y data to
 
     Returns
     -------
-    point: Tuple[float, float]
-        feature x, y values
+    RectangleSelector
+        reference to the RectangleSelector used to select the data which is returned to avoid garbage collection
 
     &#34;&#34;&#34;
-    if feature not in {&#39;max&#39;, &#39;min&#39;, &#39;max slope&#39;}:
-        raise ValueError(f&#34;Invalid feature specified (&#39;{feature}&#39;) - valid features are &#39;max&#39;, &#39;min&#39;, or &#39;max slope&#39;&#34;)
-
-    fig, ax = plt.subplots()
-
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-
-    ax.plot(x, y)
-    sc = ax.scatter(*guess)
-
-    point: Tuple[float, float] = guess
 
     def select_callback(click_event: MouseEvent, release_event: MouseEvent):
-        nonlocal point
-
         x1, y1 = click_event.xdata, click_event.ydata
         x2, y2 = release_event.xdata, release_event.ydata
 
         try:
-            region_indices = np.logical_and(np.logical_and(x &gt;= x1, x &lt;= x2), np.logical_and(y &gt;= y1, y &lt;= y2))
-
-            if feature == &#39;max&#39;:
-                feature_index = np.argmax(y[region_indices])
-            elif feature == &#39;min&#39;:
-                feature_index = np.argmin(y[region_indices])
-            elif feature == &#39;max slope&#39;:
-                slope = np.diff(y) / np.diff(x)
-                feature_index = np.argmax(slope[region_indices[:-1]])
-
-            point = x[region_indices][feature_index], y[region_indices][feature_index]
-
-            sc.set_offsets(np.c_[point[0], point[1]])
-            fig.canvas.draw()
+            x, y = line.get_xdata(), line.get_ydata()
+            data_indices = np.logical_and(np.logical_and(x &gt;= x1, x &lt;= x2), np.logical_and(y &gt;= y1, y &lt;= y2))
+            callback(x[data_indices], y[data_indices])
 
         except ValueError:
             pass
 
-    selector = RectangleSelector(ax, select_callback, useblit=True, drawtype=&#39;box&#39;,
-                                 lineprops=dict(color=&#39;black&#39;, linestyle=&#39;-&#39;, alpha=0.5),
-                                 rectprops=dict(color=&#39;gray&#39;, alpha=0.2, fill=True))
-    plt.show()
+    return RectangleSelector(axes, select_callback, useblit=True, drawtype=&#39;box&#39;, **kwargs)</code></pre>
+</details>
+</dd>
+<dt id="knightshock.graph.time_zero"><code class="name flex">
+<span>def <span class="ident">time_zero</span></span>(<span>t: numpy.ndarray, *, P: numpy.ndarray = None, schlieren: numpy.ndarray = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the time zero as defined by either the maximum slope of the pressure or the minimum of the schlieren in a
+region graphically selected by the user</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>t</code></strong> :&ensp;<code>np.ndarray</code></dt>
+<dd>time array</dd>
+<dt><strong><code>P</code></strong> :&ensp;<code>np.ndarray</code>, optional</dt>
+<dd>pressure array</dd>
+<dt><strong><code>schlieren</code></strong> :&ensp;<code>np.ndarray</code>, optional</dt>
+<dd>schlieren array</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>t0</code></strong> :&ensp;<code>float</code></dt>
+<dd>time zero offset for initial t array</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def time_zero(t: np.ndarray, *, P: np.ndarray = None, schlieren: np.ndarray = None):
+    &#34;&#34;&#34;Returns the time zero as defined by either the maximum slope of the pressure or the minimum of the schlieren in a
+    region graphically selected by the user
 
-    return point</code></pre>
+    Parameters
+    ----------
+    t: np.ndarray
+        time array
+    P: np.ndarray, optional
+        pressure array
+    schlieren: np.ndarray, optional
+        schlieren array
+
+    Returns
+    -------
+    t0: float
+        time zero offset for initial t array
+
+    &#34;&#34;&#34;
+
+    if P is None and schlieren is None:
+        raise ValueError(&#34;Either pressure or schlieren data must be given&#34;)
+    elif P is not None and schlieren is not None:
+        figure, (axes_P, axes_schlieren) = plt.subplots(2, 1, sharex=&#39;col&#39;)
+        axes_schlieren.set_xlabel(&#34;Time&#34;)
+    else:
+        figure, axes = plt.subplots()
+        if P is not None:
+            axes_P = axes
+            axes_schlieren = None
+            axes_P.set_xlabel(&#34;Time&#34;)
+        else:
+            axes_P = None
+            axes_schlieren = axes
+            axes_schlieren.set_xlabel(&#34;Time&#34;)
+
+    figure.suptitle(&#39;Time Zero&#39;)
+    plt.tight_layout()
+
+    t0 = 0
+
+    def update_t0(value):
+        nonlocal t0
+        t0 += value
+
+        if axes_P:
+            line_P.set_xdata(t - t0)
+
+        if axes_schlieren:
+            line_schlieren.set_xdata(t - t0)
+            axes_schlieren.set_xlim([x - value for x in axes_schlieren.get_xlim()])
+        else:
+            axes_P.set_xlim([x - value for x in axes_P.get_xlim()])
+
+        figure.canvas.draw()
+
+    if axes_P:
+        axes_P.set_ylabel(&#34;Pressure&#34;)
+        axes_P.set_yticks([])
+        axes_P.set_yticklabels([])
+        axes_P.xaxis.set_minor_locator(AutoMinorLocator())
+        axes_P.tick_params(which=&#39;both&#39;, direction=&#39;in&#39;)
+        axes_P.axvline(0, color=&#39;r&#39;, linestyle=&#39;--&#39;, alpha=0.5, zorder=0)
+
+        line_P, = axes_P.plot(t, P, color=&#39;k&#39;)
+        axes_P.set_xlim([np.min(t), np.max(t)])
+        selector_P = data_selector(axes_P, line_P,
+                                   callback=lambda x, y: update_t0(x[np.argmax(np.diff(y) / np.diff(x))]))
+
+    if axes_schlieren:
+        axes_schlieren.set_ylabel(&#34;Schlieren&#34;)
+        axes_schlieren.set_yticks([])
+        axes_schlieren.set_yticklabels([])
+        axes_schlieren.xaxis.set_minor_locator(AutoMinorLocator())
+        axes_schlieren.tick_params(which=&#39;both&#39;, direction=&#39;in&#39;)
+        axes_schlieren.axvline(0, color=&#39;r&#39;, linestyle=&#39;--&#39;, alpha=0.5, zorder=0)
+
+        line_schlieren, = axes_schlieren.plot(t, schlieren, color=&#39;k&#39;)
+        axes_schlieren.set_xlim([np.min(t), np.max(t)])
+        selector_schlieren = data_selector(axes_schlieren, line_schlieren,
+                                           callback=lambda x, y: update_t0(x[np.argmin(y)]))
+
+    plt.show()
+    return t0</code></pre>
 </details>
 </dd>
 </dl>
@@ -265,7 +351,8 @@ def find_feature(x: np.ndarray, y: np.ndarray, *, feature: str = &#39;max&#39;, 
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="knightshock.graph.find_feature" href="#knightshock.graph.find_feature">find_feature</a></code></li>
+<li><code><a title="knightshock.graph.data_selector" href="#knightshock.graph.data_selector">data_selector</a></code></li>
+<li><code><a title="knightshock.graph.time_zero" href="#knightshock.graph.time_zero">time_zero</a></code></li>
 </ul>
 </li>
 </ul>

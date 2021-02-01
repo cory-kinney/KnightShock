@@ -29,8 +29,9 @@
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Shock tube experiment planning and data analysis package&#34;&#34;&#34;
 
-from knightshock.gasdynamics import frozen_shock_conditions
+from knightshock.gasdynamics import frozen_shock_conditions, shock_tube_flow_properties
 from typing import Dict, Iterable, Union, Tuple
+from scipy.optimize import root_scalar
 import cantera as ct
 import numpy as np
 
@@ -64,7 +65,7 @@ def shock_velocity_from_ToF(x: np.ndarray, dt: np.ndarray) -&gt; Tuple[float, fl
         raise ValueError(&#34;Dimension of x (ndim = {}) must be 1&#34;.format(x.ndim))
     if dt.ndim != 1:
         raise ValueError(&#34;Dimension of dt array (ndim = {}) must be 1&#34;.format(dt.ndim))
-    if dt.shape[0] != x.shape[0] - 1:
+    if dt.size != x.size - 1:
         raise ValueError(&#34;Size of dt array (size = {}) must be 1 less than x array (size = {})&#34;.format(dt.size, x.size))
 
     x = np.abs(x)
@@ -185,16 +186,184 @@ class ShockTubeState:
     @classmethod
     def from_experiment(cls, T1: float, P1: float, X1: Mixture, T4: float, P4: float, X4: Mixture, u: float,
                         mechanism: str, *, method: str = &#39;EE&#39;):
+        &#34;&#34;&#34;Define the shock tube state from experimental data
+
+        Parameters
+        ----------
+        T1: float
+            initial driven temperature (K)
+        P1: float
+            initial driven pressure (Pa)
+        X1: str, Dict[str, float], or numpy.ndarray
+            initial driven mixture
+        T4: float
+            initial driver temperature (K)
+        P4: float
+            initial driver pressure (Pa)
+        X4: str, Dict[str, float], or numpy.ndarray
+            initial driver mixture
+        u: float
+            incident shock velocity at end wall (m/s)
+        mechanism: str
+            file path to mechanism
+        method: str, optional
+            method used for FROSH (default = &#39;EE&#39;)
+
+        &#34;&#34;&#34;
         solution = ct.Solution(mechanism)
 
         region1 = ShockTubeState.Region(T1, P1, X1, solution)
         region4 = ShockTubeState.Region(T4, P4, X4, solution)
 
-        (T2, P2), (T5, P5) = frozen_shock_conditions(u / region1.a, region1.thermo, method)
+        T2, P2, T5, P5 = frozen_shock_conditions(u / region1.a, region1.thermo, method)
         region2 = ShockTubeState.Region(T2, P2, X1, solution)
         region5 = ShockTubeState.Region(T5, P5, X1, solution)
 
-        return cls(region1, region2, region4, region5)</code></pre>
+        return cls(region1, region2, region4, region5)
+
+
+def M_from_P4_P1(P4, P1, T4, T1, X4, X1, gas, *, area_ratio=1, bracket=None):
+    &#34;&#34;&#34;Predicts incident shock wave Mach number from initial conditions
+
+    Parameters
+    ----------
+    P4: float
+        driver pressure (Pa)
+    P1: float
+        driven pressure (Pa)
+    T4: float
+        driver temperature (K)
+    T1: float
+        driven temperature (K)
+    X4: str, Dict[str, float], or numpy.ndarray
+        driver mixture
+    X1: str, Dict[str, float], or numpy.ndarray
+        driven mixture
+    gas: ct.ThermoPhase or str
+        thermodynamic property object
+    area_ratio: float, optional
+        ratio of the area of driver to driven (default = 1)
+    bracket: Tuple[float, float], optional
+        bracket for Mach number iterative solver (default = 1.001, 5)
+
+    Returns
+    -------
+    M: float
+        incident shock wave Mach number
+
+    &#34;&#34;&#34;
+    if not isinstance(gas, ct.ThermoPhase):
+        gas = ct.ThermoPhase(gas)
+
+    if bracket is None:
+        bracket = [1.001, 5]
+
+    gas.TPX = T4, P4, X4
+    gamma4 = gas.cp / gas.cv
+    MW4 = gas.mean_molecular_weight
+
+    gas.TPX = T1, P1, X1
+    gamma1 = gas.cp / gas.cv
+    MW1 = gas.mean_molecular_weight
+
+    def P4_P1_from_M(M):
+        return shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4, area_ratio=area_ratio)[0]
+
+    root_results = root_scalar(lambda M: P4 / P1 - P4_P1_from_M(M), bracket=bracket)
+    if not root_results.converged:
+        raise RuntimeError
+
+    return root_results.root
+
+
+def M_from_P5_P1(P5, P1, T1, X1, gas, *, method=None, bracket=None):
+    &#34;&#34;&#34;Predicts incident shock wave Mach number from initial driven pressure and post reflected shock pressure
+
+    Parameters
+    ----------
+    P5: float
+        post reflected shock pressure (Pa)
+    P1: float
+        initial pressure (Pa)
+    T1: float
+        initial temperature (K)
+    X1: str, Dict[str, float], or numpy.ndarray
+        initial mixture
+    gas: ct.ThermoPhase or str
+        thermodynamic property object
+    method: str, optional
+        method for FROSH
+    bracket: Tuple[float, float], optional
+        bracket for Mach number iterative solver (default = 1.001, 5)
+
+    Returns
+    -------
+    M: float
+        incident shock wave Mach number
+
+    &#34;&#34;&#34;
+    if not isinstance(gas, ct.ThermoPhase):
+        gas = ct.ThermoPhase(gas)
+
+    if bracket is None:
+        bracket = [1.001, 5]
+
+    gas.X1 = X1
+
+    def P5_from_M(M):
+        gas.TP = T1, P1
+        return frozen_shock_conditions(M, gas, method=method)[3]
+
+    root_results = root_scalar(lambda M: P5 - P5_from_M(M), bracket=bracket)
+    if not root_results.converged:
+        raise RuntimeError
+
+    return root_results.root
+
+
+def M_from_T5_T1(T5, T1, P1, X1, gas, *, method=None, bracket=None):
+    &#34;&#34;&#34;Predicts incident shock wave Mach number from initial driven temperature and post reflected shock temperature
+
+    Parameters
+    ----------
+    T5: float
+        post reflected shock temperature (K)
+    T1: float
+        initial temperature (K)
+    P1: float
+        initial pressure (Pa)
+    X1: str, Dict[str, float], or numpy.ndarray
+        initial mixture
+    gas: ct.ThermoPhase or str
+        thermodynamic property object
+    method: str, optional
+        method for FROSH
+    bracket: Tuple[float, float], optional
+        bracket for Mach number iterative solver (default = 1.001, 5)
+
+    Returns
+    -------
+    M: float
+        incident shock wave Mach number
+
+    &#34;&#34;&#34;
+    if not isinstance(gas, ct.ThermoPhase):
+        gas = ct.ThermoPhase(gas)
+
+    if bracket is None:
+        bracket = [1.001, 5]
+
+    gas.X = X1
+
+    def T5_from_M(M):
+        gas.TP = T1, P1
+        return frozen_shock_conditions(M, gas, method=method)[2]
+
+    root_results = root_scalar(lambda M: T5 - T5_from_M(M), bracket=bracket)
+    if not root_results.converged:
+        raise RuntimeError
+
+    return root_results.root</code></pre>
 </details>
 </section>
 <section>
@@ -219,6 +388,247 @@ class ShockTubeState:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="knightshock.M_from_P4_P1"><code class="name flex">
+<span>def <span class="ident">M_from_P4_P1</span></span>(<span>P4, P1, T4, T1, X4, X1, gas, *, area_ratio=1, bracket=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Predicts incident shock wave Mach number from initial conditions</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>P4</code></strong> :&ensp;<code>float</code></dt>
+<dd>driver pressure (Pa)</dd>
+<dt><strong><code>P1</code></strong> :&ensp;<code>float</code></dt>
+<dd>driven pressure (Pa)</dd>
+<dt><strong><code>T4</code></strong> :&ensp;<code>float</code></dt>
+<dd>driver temperature (K)</dd>
+<dt><strong><code>T1</code></strong> :&ensp;<code>float</code></dt>
+<dd>driven temperature (K)</dd>
+<dt><strong><code>X4</code></strong> :&ensp;<code>str, Dict[str, float],</code> or <code>numpy.ndarray</code></dt>
+<dd>driver mixture</dd>
+<dt><strong><code>X1</code></strong> :&ensp;<code>str, Dict[str, float],</code> or <code>numpy.ndarray</code></dt>
+<dd>driven mixture</dd>
+<dt><strong><code>gas</code></strong> :&ensp;<code>ct.ThermoPhase</code> or <code>str</code></dt>
+<dd>thermodynamic property object</dd>
+<dt><strong><code>area_ratio</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>ratio of the area of driver to driven (default = 1)</dd>
+<dt><strong><code>bracket</code></strong> :&ensp;<code>Tuple[float, float]</code>, optional</dt>
+<dd>bracket for Mach number iterative solver (default = 1.001, 5)</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>M</code></strong> :&ensp;<code>float</code></dt>
+<dd>incident shock wave Mach number</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def M_from_P4_P1(P4, P1, T4, T1, X4, X1, gas, *, area_ratio=1, bracket=None):
+    &#34;&#34;&#34;Predicts incident shock wave Mach number from initial conditions
+
+    Parameters
+    ----------
+    P4: float
+        driver pressure (Pa)
+    P1: float
+        driven pressure (Pa)
+    T4: float
+        driver temperature (K)
+    T1: float
+        driven temperature (K)
+    X4: str, Dict[str, float], or numpy.ndarray
+        driver mixture
+    X1: str, Dict[str, float], or numpy.ndarray
+        driven mixture
+    gas: ct.ThermoPhase or str
+        thermodynamic property object
+    area_ratio: float, optional
+        ratio of the area of driver to driven (default = 1)
+    bracket: Tuple[float, float], optional
+        bracket for Mach number iterative solver (default = 1.001, 5)
+
+    Returns
+    -------
+    M: float
+        incident shock wave Mach number
+
+    &#34;&#34;&#34;
+    if not isinstance(gas, ct.ThermoPhase):
+        gas = ct.ThermoPhase(gas)
+
+    if bracket is None:
+        bracket = [1.001, 5]
+
+    gas.TPX = T4, P4, X4
+    gamma4 = gas.cp / gas.cv
+    MW4 = gas.mean_molecular_weight
+
+    gas.TPX = T1, P1, X1
+    gamma1 = gas.cp / gas.cv
+    MW1 = gas.mean_molecular_weight
+
+    def P4_P1_from_M(M):
+        return shock_tube_flow_properties(M, T1, T4, MW1, MW4, gamma1, gamma4, area_ratio=area_ratio)[0]
+
+    root_results = root_scalar(lambda M: P4 / P1 - P4_P1_from_M(M), bracket=bracket)
+    if not root_results.converged:
+        raise RuntimeError
+
+    return root_results.root</code></pre>
+</details>
+</dd>
+<dt id="knightshock.M_from_P5_P1"><code class="name flex">
+<span>def <span class="ident">M_from_P5_P1</span></span>(<span>P5, P1, T1, X1, gas, *, method=None, bracket=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Predicts incident shock wave Mach number from initial driven pressure and post reflected shock pressure</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>P5</code></strong> :&ensp;<code>float</code></dt>
+<dd>post reflected shock pressure (Pa)</dd>
+<dt><strong><code>P1</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial pressure (Pa)</dd>
+<dt><strong><code>T1</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial temperature (K)</dd>
+<dt><strong><code>X1</code></strong> :&ensp;<code>str, Dict[str, float],</code> or <code>numpy.ndarray</code></dt>
+<dd>initial mixture</dd>
+<dt><strong><code>gas</code></strong> :&ensp;<code>ct.ThermoPhase</code> or <code>str</code></dt>
+<dd>thermodynamic property object</dd>
+<dt><strong><code>method</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>method for FROSH</dd>
+<dt><strong><code>bracket</code></strong> :&ensp;<code>Tuple[float, float]</code>, optional</dt>
+<dd>bracket for Mach number iterative solver (default = 1.001, 5)</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>M</code></strong> :&ensp;<code>float</code></dt>
+<dd>incident shock wave Mach number</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def M_from_P5_P1(P5, P1, T1, X1, gas, *, method=None, bracket=None):
+    &#34;&#34;&#34;Predicts incident shock wave Mach number from initial driven pressure and post reflected shock pressure
+
+    Parameters
+    ----------
+    P5: float
+        post reflected shock pressure (Pa)
+    P1: float
+        initial pressure (Pa)
+    T1: float
+        initial temperature (K)
+    X1: str, Dict[str, float], or numpy.ndarray
+        initial mixture
+    gas: ct.ThermoPhase or str
+        thermodynamic property object
+    method: str, optional
+        method for FROSH
+    bracket: Tuple[float, float], optional
+        bracket for Mach number iterative solver (default = 1.001, 5)
+
+    Returns
+    -------
+    M: float
+        incident shock wave Mach number
+
+    &#34;&#34;&#34;
+    if not isinstance(gas, ct.ThermoPhase):
+        gas = ct.ThermoPhase(gas)
+
+    if bracket is None:
+        bracket = [1.001, 5]
+
+    gas.X1 = X1
+
+    def P5_from_M(M):
+        gas.TP = T1, P1
+        return frozen_shock_conditions(M, gas, method=method)[3]
+
+    root_results = root_scalar(lambda M: P5 - P5_from_M(M), bracket=bracket)
+    if not root_results.converged:
+        raise RuntimeError
+
+    return root_results.root</code></pre>
+</details>
+</dd>
+<dt id="knightshock.M_from_T5_T1"><code class="name flex">
+<span>def <span class="ident">M_from_T5_T1</span></span>(<span>T5, T1, P1, X1, gas, *, method=None, bracket=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Predicts incident shock wave Mach number from initial driven temperature and post reflected shock temperature</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>T5</code></strong> :&ensp;<code>float</code></dt>
+<dd>post reflected shock temperature (K)</dd>
+<dt><strong><code>T1</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial temperature (K)</dd>
+<dt><strong><code>P1</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial pressure (Pa)</dd>
+<dt><strong><code>X1</code></strong> :&ensp;<code>str, Dict[str, float],</code> or <code>numpy.ndarray</code></dt>
+<dd>initial mixture</dd>
+<dt><strong><code>gas</code></strong> :&ensp;<code>ct.ThermoPhase</code> or <code>str</code></dt>
+<dd>thermodynamic property object</dd>
+<dt><strong><code>method</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>method for FROSH</dd>
+<dt><strong><code>bracket</code></strong> :&ensp;<code>Tuple[float, float]</code>, optional</dt>
+<dd>bracket for Mach number iterative solver (default = 1.001, 5)</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>M</code></strong> :&ensp;<code>float</code></dt>
+<dd>incident shock wave Mach number</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def M_from_T5_T1(T5, T1, P1, X1, gas, *, method=None, bracket=None):
+    &#34;&#34;&#34;Predicts incident shock wave Mach number from initial driven temperature and post reflected shock temperature
+
+    Parameters
+    ----------
+    T5: float
+        post reflected shock temperature (K)
+    T1: float
+        initial temperature (K)
+    P1: float
+        initial pressure (Pa)
+    X1: str, Dict[str, float], or numpy.ndarray
+        initial mixture
+    gas: ct.ThermoPhase or str
+        thermodynamic property object
+    method: str, optional
+        method for FROSH
+    bracket: Tuple[float, float], optional
+        bracket for Mach number iterative solver (default = 1.001, 5)
+
+    Returns
+    -------
+    M: float
+        incident shock wave Mach number
+
+    &#34;&#34;&#34;
+    if not isinstance(gas, ct.ThermoPhase):
+        gas = ct.ThermoPhase(gas)
+
+    if bracket is None:
+        bracket = [1.001, 5]
+
+    gas.X = X1
+
+    def T5_from_M(M):
+        gas.TP = T1, P1
+        return frozen_shock_conditions(M, gas, method=method)[2]
+
+    root_results = root_scalar(lambda M: T5 - T5_from_M(M), bracket=bracket)
+    if not root_results.converged:
+        raise RuntimeError
+
+    return root_results.root</code></pre>
+</details>
+</dd>
 <dt id="knightshock.ToF_from_pressure_series"><code class="name flex">
 <span>def <span class="ident">ToF_from_pressure_series</span></span>(<span>t: numpy.ndarray, pressure_series: Iterable[numpy.ndarray], threshold: float) ‑> numpy.ndarray</span>
 </code></dt>
@@ -336,7 +746,7 @@ of measurement intervals calculated by time of flight</p>
         raise ValueError(&#34;Dimension of x (ndim = {}) must be 1&#34;.format(x.ndim))
     if dt.ndim != 1:
         raise ValueError(&#34;Dimension of dt array (ndim = {}) must be 1&#34;.format(dt.ndim))
-    if dt.shape[0] != x.shape[0] - 1:
+    if dt.size != x.size - 1:
         raise ValueError(&#34;Size of dt array (size = {}) must be 1 less than x array (size = {})&#34;.format(dt.size, x.size))
 
     x = np.abs(x)
@@ -431,12 +841,36 @@ of measurement intervals calculated by time of flight</p>
     @classmethod
     def from_experiment(cls, T1: float, P1: float, X1: Mixture, T4: float, P4: float, X4: Mixture, u: float,
                         mechanism: str, *, method: str = &#39;EE&#39;):
+        &#34;&#34;&#34;Define the shock tube state from experimental data
+
+        Parameters
+        ----------
+        T1: float
+            initial driven temperature (K)
+        P1: float
+            initial driven pressure (Pa)
+        X1: str, Dict[str, float], or numpy.ndarray
+            initial driven mixture
+        T4: float
+            initial driver temperature (K)
+        P4: float
+            initial driver pressure (Pa)
+        X4: str, Dict[str, float], or numpy.ndarray
+            initial driver mixture
+        u: float
+            incident shock velocity at end wall (m/s)
+        mechanism: str
+            file path to mechanism
+        method: str, optional
+            method used for FROSH (default = &#39;EE&#39;)
+
+        &#34;&#34;&#34;
         solution = ct.Solution(mechanism)
 
         region1 = ShockTubeState.Region(T1, P1, X1, solution)
         region4 = ShockTubeState.Region(T4, P4, X4, solution)
 
-        (T2, P2), (T5, P5) = frozen_shock_conditions(u / region1.a, region1.thermo, method)
+        T2, P2, T5, P5 = frozen_shock_conditions(u / region1.a, region1.thermo, method)
         region2 = ShockTubeState.Region(T2, P2, X1, solution)
         region5 = ShockTubeState.Region(T5, P5, X1, solution)
 
@@ -455,7 +889,28 @@ of measurement intervals calculated by time of flight</p>
 <span>def <span class="ident">from_experiment</span></span>(<span>T1: float, P1: float, X1: Union[str, Dict[str, float], numpy.ndarray], T4: float, P4: float, X4: Union[str, Dict[str, float], numpy.ndarray], u: float, mechanism: str, *, method: str = 'EE')</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Define the shock tube state from experimental data</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>T1</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial driven temperature (K)</dd>
+<dt><strong><code>P1</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial driven pressure (Pa)</dd>
+<dt><strong><code>X1</code></strong> :&ensp;<code>str, Dict[str, float],</code> or <code>numpy.ndarray</code></dt>
+<dd>initial driven mixture</dd>
+<dt><strong><code>T4</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial driver temperature (K)</dd>
+<dt><strong><code>P4</code></strong> :&ensp;<code>float</code></dt>
+<dd>initial driver pressure (Pa)</dd>
+<dt><strong><code>X4</code></strong> :&ensp;<code>str, Dict[str, float],</code> or <code>numpy.ndarray</code></dt>
+<dd>initial driver mixture</dd>
+<dt><strong><code>u</code></strong> :&ensp;<code>float</code></dt>
+<dd>incident shock velocity at end wall (m/s)</dd>
+<dt><strong><code>mechanism</code></strong> :&ensp;<code>str</code></dt>
+<dd>file path to mechanism</dd>
+<dt><strong><code>method</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>method used for FROSH (default = 'EE')</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -463,12 +918,36 @@ of measurement intervals calculated by time of flight</p>
 <pre><code class="python">@classmethod
 def from_experiment(cls, T1: float, P1: float, X1: Mixture, T4: float, P4: float, X4: Mixture, u: float,
                     mechanism: str, *, method: str = &#39;EE&#39;):
+    &#34;&#34;&#34;Define the shock tube state from experimental data
+
+    Parameters
+    ----------
+    T1: float
+        initial driven temperature (K)
+    P1: float
+        initial driven pressure (Pa)
+    X1: str, Dict[str, float], or numpy.ndarray
+        initial driven mixture
+    T4: float
+        initial driver temperature (K)
+    P4: float
+        initial driver pressure (Pa)
+    X4: str, Dict[str, float], or numpy.ndarray
+        initial driver mixture
+    u: float
+        incident shock velocity at end wall (m/s)
+    mechanism: str
+        file path to mechanism
+    method: str, optional
+        method used for FROSH (default = &#39;EE&#39;)
+
+    &#34;&#34;&#34;
     solution = ct.Solution(mechanism)
 
     region1 = ShockTubeState.Region(T1, P1, X1, solution)
     region4 = ShockTubeState.Region(T4, P4, X4, solution)
 
-    (T2, P2), (T5, P5) = frozen_shock_conditions(u / region1.a, region1.thermo, method)
+    T2, P2, T5, P5 = frozen_shock_conditions(u / region1.a, region1.thermo, method)
     region2 = ShockTubeState.Region(T2, P2, X1, solution)
     region5 = ShockTubeState.Region(T5, P5, X1, solution)
 
@@ -495,6 +974,9 @@ def from_experiment(cls, T1: float, P1: float, X1: Mixture, T4: float, P4: float
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="knightshock.M_from_P4_P1" href="#knightshock.M_from_P4_P1">M_from_P4_P1</a></code></li>
+<li><code><a title="knightshock.M_from_P5_P1" href="#knightshock.M_from_P5_P1">M_from_P5_P1</a></code></li>
+<li><code><a title="knightshock.M_from_T5_T1" href="#knightshock.M_from_T5_T1">M_from_T5_T1</a></code></li>
 <li><code><a title="knightshock.ToF_from_pressure_series" href="#knightshock.ToF_from_pressure_series">ToF_from_pressure_series</a></code></li>
 <li><code><a title="knightshock.shock_velocity_from_ToF" href="#knightshock.shock_velocity_from_ToF">shock_velocity_from_ToF</a></code></li>
 </ul>
